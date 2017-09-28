@@ -32,11 +32,14 @@ int main(){
 		w[i][n]=C[i];
 		//printf("w[%i][%i]=%f\n",i,n,w[i][n]);		
 		while(1){
+			
+			w[i][n+1] = C[i] + aux;
+
 			for(int j=0; j < hp[i].p[i]; j++){
 				aux = ceil(w[i][n]/T[j])*C[j];
 				printf("j-%i, hp-%i\n", j, hp[i].p[i]);
 			}
-			w[i][n+1] = C[i] + aux;
+			
 			if(w[i][n+1] == w[i][n]){
 				R[i]=w[i][n];
 				printf("R[%i]=%f\n",i,R[i]);
