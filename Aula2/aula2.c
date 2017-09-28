@@ -30,15 +30,16 @@ int main(){
 	for(int i=0; i<N; i++){
 		n=0;
 		w[i][n]=C[i];
-		//printf("w[%i][%i]=%f\n",i,n,w[i][n]);		
+		printf("w[%i][%i]=%f\n",i,n,w[i][n]);		
 		while(1){
 			
-			w[i][n+1] = C[i] + aux;
-
 			for(int j=0; j < hp[i].p[i]; j++){
 				aux = ceil(w[i][n]/T[j])*C[j];
-				printf("j-%i, hp-%i\n", j, hp[i].p[i]);
+				//printf("j-%i, hp-%i\n", j, hp[i].p[i]);
+				printf("w[%i][%i]=%f\n", i, n,w[i][n]);
 			}
+
+			w[i][n+1] = C[i] + aux;
 			
 			if(w[i][n+1] == w[i][n]){
 				R[i]=w[i][n];
