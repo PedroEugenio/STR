@@ -1,7 +1,7 @@
 cflags = -g -Wall -O2 -D_REENTRANT -lpthread -lrt
 
-aula3:
-	gcc $(cflags) aula3.c func.o -o aula3 -lm
+ex1:
+	gcc $(cflags) ex1.c func.o -o ex1 -lm
 
 clean:
-	rm aula3
+	rm ex1
