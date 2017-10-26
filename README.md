@@ -1,3 +1,3 @@
-# STR
+# Real Time Systems
 
-# O Pedro é um bom rapaz!
+# Class of Real Time Systems in Electrical and Computer Engineering Degree
