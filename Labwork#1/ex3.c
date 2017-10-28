@@ -42,7 +42,6 @@ int main(){
 		printf("Error on setaffinity!\n");
     }
     
-    
 
 
 return 0;
