@@ -1,6 +1,4 @@
 
-#ifndef TIMESPEC_H
-#define TIMESPEC_H
 
 #include <time.h>
 
@@ -27,5 +25,3 @@ int IF_EQUAL(struct timespec, struct timespec);
 int IF_UPPER_OR_EQUAL(struct timespec, struct timespec);
 
 int IF_LOWER_OR_EQUAL(struct timespec, struct timespec);
-
-#endif
