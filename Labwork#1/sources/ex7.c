@@ -12,8 +12,8 @@
 #include <sys/types.h>
 #include <sched.h>
 
-#include "sources/func.h"
-#include "sources/timespec.h"
+#include "../resources/func.h"
+#include "../resources/timespec.h"
 
 /* Scheduler Round Robin */
 #define POLICY2USE SCHED_RR
@@ -126,7 +126,7 @@ int main() {
   /* Final results... for each task */
   do {
     printf("\n\nWaiting...\n\n");
-    sleep(5); // ESTE TEMPO DEVE SER SUFICIENTE PARA CORRER O TEMPO DAS TASKS, SE FOR 0, NÃO SE CONSEGUE OBTER 
+    sleep(5); // ESTE TEMPO DEVE SER SUFICIENTE PARA CORRER O TEMPO DAS TASKS, SE FOR 0, NÃO SE CONSEGUE OBTER
     for (int i = 0; i < TASKS; i++) {
       pthread_cancel(thread[i]);
     }

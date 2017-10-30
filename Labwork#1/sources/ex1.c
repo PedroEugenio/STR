@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include <sched.h>
 
-#include "sources/func.h"
+#include "../resources/func.h"
 
 void f1(int, int);
 void f2(int, int);

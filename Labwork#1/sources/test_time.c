@@ -1,4 +1,4 @@
-#include "timespec.c"
+#include "../resources/timespec.c"
 #include <stdio.h>
 
 
