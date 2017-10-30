@@ -7,9 +7,11 @@ CC = gcc
 # flags to compilation
 cflags = -g -Wall -O0 -D_REENTRANT -lpthread -pthread -lrt
 # Directorie of the source files #
-DIR = sources
+SOURCES = sources
+# Directorie of the build files #
+BUILD = build
 # Header files
-HEADERS  = ${DIR}/func.h ${DIR}/timespec.h
+HEADERS  = ${SOURCES}/func.h ${SOURCES}/timespec.h
 # Code files to compiling
 FILES = ex1 ex2 ex3 ex4 ex5 ex6 ex7 ex8 ex9
 
@@ -25,7 +27,7 @@ clean:
 # Compilation of all problems
 
 ex1:
-	${CC} ${cflags} ex1.c ${DIR}/func.o -o ex1 -lm
+	${CC} ${cflags} ex1.c ${SOURCES}/func.o -o ex1 -lm
 
-ex7: ex7.c ${DIR}/timespec.c ${HEADERS}
-	${CC} ${cflags} ex7.c ${DIR}/func.o ${DIR}/timespec.c -o ex7
+ex7: ex7.c ${SOURCES}/timespec.c ${HEADERS}
+	${CC} ${cflags} ex7.c ${SOURCES}/func.o ${SOURCES}/timespec.c -o ${BUILD}/ex7
