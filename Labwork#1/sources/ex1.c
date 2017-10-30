@@ -7,7 +7,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <sched.h>
-#include "func.h"
+
+#include "../resources/func.h"
 
 void f1(int, int);
 void f2(int, int);
