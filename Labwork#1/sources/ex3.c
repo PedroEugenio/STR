@@ -18,7 +18,7 @@
 /* Activation periods */
 #define PERIOD1_MS 100
 #define PERIOD2_MS 200
-#define PERIOD3_MS 360
+#define PERIOD3_MS 360 // Não é 300?
 
 /* Activation time for each thread */
 struct timespec activation_time[3];
@@ -127,7 +127,7 @@ void* function3(void* arg){
     if(temp.tv_sec < 0 || temp.tv_nsec < 0){
       worse_response_time[2] = response_time;
     }
-  
+
     //Increment activation time
     activation_time[2] = SUM(activation_time[2], dt);
 
