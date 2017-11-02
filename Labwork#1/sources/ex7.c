@@ -125,7 +125,7 @@ int main() {
   /* Final results... for each task */
   do {
     printf("\n\nWaiting...\n\n");
-    sleep(5); // ESTE TEMPO DEVE SER SUFICIENTE PARA CORRER O TEMPO DAS TASKS, SE FOR 0, NÃO SE CONSEGUE OBTER
+    sleep(5);
     for (int i = 0; i < TASKS; i++) {
       pthread_cancel(thread[i]);
     }
@@ -135,12 +135,10 @@ int main() {
 
     /* Clear worse responses times */
     for (int i = 0; i < TASKS; i++) {
-      worse_rptime[i].tv_sec = 0; // usar a funçao SET
-      worse_rptime[i].tv_nsec = 0;
+      worse_rptime[i] = SET(0, 0);
     }
     exit(EXIT_SUCCESS);
   } while(1);
-  // printf("Testing time: %LFms\n", time2ms(start_time[0]));
 }
 /*
 *
