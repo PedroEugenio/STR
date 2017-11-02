@@ -42,10 +42,9 @@ int main() {
   printf("\n\nProblem 7...\n\n");
 
   struct timespec delay, current_time;
-
-  delay.tv_sec = 3; // colocar função SET (do time)
-  delay.tv_nsec = 0;
-
+  
+  /* Set a 3s of delay */
+  SET(3, 0);
 
   /* Get the current time */
   if( clock_gettime(CLOCK_MONOTONIC, &current_time) == -1 )
