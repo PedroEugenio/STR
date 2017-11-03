@@ -53,7 +53,7 @@ void wait_time() {
 
   finish = SUM(current, finish);
 
-  while (IF_UPPER(CLOCK_MONOTONIC, &current) == 1) { // -1 ??
+  while (IF_UPPER(finish, current) == 1) {
     if (clock_gettime(CLOCK_MONOTONIC, &current) == -1) {
       threadErrorExit("Errror on geting time!");
     }

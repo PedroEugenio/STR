@@ -1,15 +1,17 @@
 
 #include "timespec.h"
+#include <pthread.h>
+#include <unistd.h>
 
-#ifndef Error_RT
-#define Error_RT(msg)    do { perror(msg); return -1; } while (0)
+#ifndef rtError
+#define rtError(msg) do { perror(msg); return -1; } while (0)
 #endif
 
 #define MAX_RT_TASKS 50
 
 typedef struct {
 
-  pthread_t ID;
+  pthread_t       ID;
   struct timespec PERIOD;
   struct timespec NEXT_PERIOD;
 } RT_TASK;
