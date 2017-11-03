@@ -103,7 +103,7 @@ int main() {
     if( (priority[i].sched_priority = sched_get_priority_max(POLICY2USE)) == -1)
       errorExit("main->sched_get_priority_max");
 
-    printf("Priority of %d: %d\n", i+1, priority[i].sched_priority);
+    printf("Priority of Task %d: %d\n", i+1, priority[i].sched_priority);
 
     if( pthread_attr_setschedparam(&(attr[i]), &(priority[i])) != 0 )
       errorExit("main->pthread_attr_setschedparam");
