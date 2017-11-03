@@ -32,7 +32,7 @@ struct timespec SUM(struct timespec t2, struct timespec t1) {
   return deltaTime;
 }
 
-struct timespec SET(int ns, int s) {
+struct timespec SET(int s, int ns) {
 
   struct timespec deltaTime;
 

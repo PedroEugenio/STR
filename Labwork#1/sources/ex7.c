@@ -43,9 +43,8 @@ int main() {
 
   struct timespec delay, current_time;
 
-  delay.tv_sec = 3; // colocar função SET (do time)
-  delay.tv_nsec = 0;
-
+  /* Set a 3s of delay */
+  delay = SET(3, 0);
 
   /* Get the current time */
   if( clock_gettime(CLOCK_MONOTONIC, &current_time) == -1 )
@@ -104,7 +103,7 @@ int main() {
     if( (priority[i].sched_priority = sched_get_priority_max(POLICY2USE)) == -1)
       errorExit("main->sched_get_priority_max");
 
-    printf("Priority of %d: %d\n", i+1, priority[i].sched_priority);
+    printf("Priority of Task %d: %d\n", i+1, priority[i].sched_priority);
 
     if( pthread_attr_setschedparam(&(attr[i]), &(priority[i])) != 0 )
       errorExit("main->pthread_attr_setschedparam");
@@ -126,7 +125,7 @@ int main() {
   /* Final results... for each task */
   do {
     printf("\n\nWaiting...\n\n");
-    sleep(5); // ESTE TEMPO DEVE SER SUFICIENTE PARA CORRER O TEMPO DAS TASKS, SE FOR 0, NÃO SE CONSEGUE OBTER
+    sleep(5);
     for (int i = 0; i < TASKS; i++) {
       pthread_cancel(thread[i]);
     }
@@ -136,12 +135,10 @@ int main() {
 
     /* Clear worse responses times */
     for (int i = 0; i < TASKS; i++) {
-      worse_rptime[i].tv_sec = 0; // usar a funçao SET
-      worse_rptime[i].tv_nsec = 0;
+      worse_rptime[i] = SET(0, 0);
     }
     exit(EXIT_SUCCESS);
   } while(1);
-  // printf("Testing time: %LFms\n", time2ms(start_time[0]));
 }
 /*
 *
