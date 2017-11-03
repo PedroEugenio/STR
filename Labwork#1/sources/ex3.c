@@ -18,7 +18,7 @@
 /* Activation periods */
 #define PERIOD1_MS 100
 #define PERIOD2_MS 200
-#define PERIOD3_MS 360 // Não é 300?
+#define PERIOD3_MS 300 
 
 /* Activation time for each thread */
 struct timespec activation_time[3];
