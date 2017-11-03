@@ -22,15 +22,18 @@
 /* Number of Threads */
 #define TASKS      3
 
+#define CLASS      1
+#define GROUP      3
+
 /* Activation periods in ms */
 #define PRERIOD_T1 100
 #define PRERIOD_T2 200
 #define PRERIOD_T3 300
 
 /* Start and Finish Time of threads in s */
-#define START       3
-#define FINISH      6
-#define SWITCH      8
+#define START       2
+#define FINISH      35
+#define SWITCH      5
 
 #ifndef errorExit
 #define errorExit(msg) do{ perror(msg); exit(EXIT_FAILURE); }while(0)
@@ -123,7 +126,7 @@ int main() {
   pthread_setschedprio(pthread_self(), sched_get_priority_min(POLICY2USE));
 
   /* Initialize switch time */
-  switch_time = SUM(switch_time, SET(SWITCH_TIME, 0));
+  switch_time = SUM(switch_time, SET(SWITCH, 0));
 
   /* ----------> Ex4 <---------- */
 
@@ -160,7 +163,7 @@ int main() {
 */
 void* task1(void *arg) {
 
-  struct timespec _time, last_activation, switchTime;
+  struct timespec _time, aux_time, last_activation;
 
   // Set Period and initialize next activation equal to start time
   // It will guarantee that in first interection they will start at the same time
@@ -175,26 +178,27 @@ void* task1(void *arg) {
     rt_task_wait_period();
 
     // Execute the task in her period
-    f1(1,3);
+    f1(CLASS, GROUP);
     // Capture the actual time
     clock_gettime(CLOCK_MONOTONIC, &_time);
     // Response time = current_time - last_start_time
-    _time = DIFF(_time, last_activation);// DIFF(next_activation, aux_time); -> valor positivo
+    aux_time = DIFF(_time, last_activation);// DIFF(next_activation, aux_time); -> valor positivo
     // Get the worse time:
-    if(IF_UPPER(_time, response_time[0]))
-      response_time[0] = _time;
+    if(IF_UPPER(aux_time, response_time[0]))
+      response_time[0] = aux_time;
 
     /* --------> Exercise 4 <-------- */
     struct sched_param parameters;
     int policy, priority;
 
     // Get priority of the thread to know if is running RMPO
-    pthread_getschedparam(thread[0], &policy, &parameters)
+    pthread_getschedparam(pthread_self(), &policy, &parameters); // thread[0]
 
     priority = parameters.sched_priority;
-
+    //_time = DIFF(switch_time, _time);
+    //printf("%LF\n", time2ms(_time)); //
     // Check if switch time was reached
-    if(priority == sched_get_priority_max(SCHED_FIFO) && IF_UPPER(_time, switch_time)){
+    if(priority == sched_get_priority_max(POLICY2USE) && IF_UPPER(_time, switch_time) ){ //IF_UPPER(_time, switch_time) (_time.tv_sec < 0 || _time.tv_nsec < 0)
 
       printf("RMPO response times:\n");
       response_times();
@@ -203,7 +207,7 @@ void* task1(void *arg) {
       clock_gettime(CLOCK_MONOTONIC, &_time);
 
       // Set switchTime = current_time + switch_delay
-      switch_time = SUM(_time, SET(SWITCH_TIME, 0));
+      switch_time = SUM(_time, SET(SWITCH, 0));
 
       // Switch Task 1 and 3 priorities
       pthread_setschedprio(thread[2], sched_get_priority_max(POLICY2USE));
@@ -234,7 +238,7 @@ void* task2(void *arg) {
     rt_task_wait_period();
 
     // Execute the task in her period
-    f2(1,3);
+    f2(CLASS, GROUP);
     // Capture the actual time
     clock_gettime(CLOCK_MONOTONIC, &_time);
     // Response time = current_time - last_start_time
@@ -243,34 +247,7 @@ void* task2(void *arg) {
     if(IF_UPPER(_time, response_time[1]))
       response_time[1] = _time;
 
-    /* --------> Exercise 4 <-------- */
-    struct sched_param parameters;
-    int policy, priority;
-
-    // Get priority of the thread to know if is running RMPO
-    pthread_getschedparam(thread[0], &policy, &parameters)
-
-    priority = parameters.sched_priority;
-
-    // Check if switch time was reached
-    if(priority == sched_get_priority_max(SCHED_FIFO) && IF_UPPER(_time, switch_time)){
-
-      printf("RMPO response times:\n");
-      response_times();
-
-      // Switch to inverse RMPO
-      clock_gettime(CLOCK_MONOTONIC, &_time);
-
-      // Set switchTime = current_time + switch_delay
-      switch_time = SUM(_time, SET(SWITCH_TIME, 0));
-
-      // Switch Task 1 and 3 priorities
-      pthread_setschedprio(thread[0], sched_get_priority_max(POLICY2USE));
-      pthread_setschedprio(thread[1], sched_get_priority_max(POLICY2USE)-2);
-    }
-    /* --------> Exercise 4 <-------- */
   }/* end of while */
-
 }
 /*
 *
@@ -279,7 +256,7 @@ void* task2(void *arg) {
 */
 void* task3(void *arg) {
 
-  struct timespec _time, last_activation;
+  struct timespec _time, aux_time, last_activation;
 
   // Set Period and initialize next activation equal to start time
   // It will guarantee that in first interection they will start at the same time
@@ -294,15 +271,41 @@ void* task3(void *arg) {
     rt_task_wait_period();
 
     // Execute the task in her period
-    f3(1,3);
+    f3(CLASS, GROUP);
     // Capture the actual time
     clock_gettime(CLOCK_MONOTONIC, &_time);
     // Response time = current_time - last_start_time
-    _time = DIFF(_time, last_activation);// DIFF(next_activation, aux_time); -> valor positivo
+    aux_time = DIFF(_time, last_activation);// DIFF(next_activation, aux_time); -> valor positivo
     // Get the worse time:
-    if(IF_UPPER(_time, response_time[2]))
-      response_time[2] = _time;
+    if(IF_UPPER(aux_time, response_time[2]))
+      response_time[2] = aux_time;
 
+    /* --------> Exercise 4 <-------- */
+    struct sched_param parameters;
+    int policy, priority;
+
+    // Get priority of the thread to know if is running RMPO
+    pthread_getschedparam(pthread_self(), &policy, &parameters); // thread[1]
+
+    priority = parameters.sched_priority;
+    //_time = DIFF(switch_time, _time);
+    // Check if switch time was reached
+    if(priority == sched_get_priority_max(POLICY2USE) && IF_UPPER(_time, switch_time)){
+
+      printf("RMPO response times:\n");
+      response_times();
+
+      // Switch to inverse RMPO
+      clock_gettime(CLOCK_MONOTONIC, &_time);
+
+      // Set switchTime = current_time + switch_delay
+      switch_time = SUM(_time, SET(SWITCH, 0));
+
+      // Switch Task 1 and 2 priorities
+      pthread_setschedprio(thread[0], sched_get_priority_max(POLICY2USE));
+      pthread_setschedprio(thread[2], sched_get_priority_max(POLICY2USE)-2);
+    }
+    /* --------> Exercise 4 <-------- */
   }
 }
 void response_times() {

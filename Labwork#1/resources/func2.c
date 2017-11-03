@@ -1,69 +1,89 @@
 
-#include "timespec.h"
-#include "func2.h"
+#define _GNU_SOURCE
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <time.h>
+#include <errno.h>
+#include <unistd.h>
+#include <pthread.h>
+#include <sys/mman.h>
+#include <string.h>
 
-/*
-* First periodic Task
-*/
-void f1(int class, int group) {
 
-  int total = (int)(TIME1 / WAIT_TIME);
+#include <sched.h>
 
-  for (int i = 0; i < total; i++) {
-    wait_time();
+static struct timespec Calculate_dt(struct timespec first_time, struct timespec second_time){
+  struct timespec time_delta;
+  time_delta.tv_sec = second_time.tv_sec - first_time.tv_sec;
+  if(first_time.tv_nsec > second_time.tv_nsec){
+    time_delta.tv_nsec = 1000000000 + second_time.tv_nsec - first_time.tv_nsec;
+    time_delta.tv_sec--;
   }
+  else{
+    time_delta.tv_nsec = second_time.tv_nsec - first_time.tv_nsec;
+  }
+
+  return time_delta;
 }
-/*
-* Second periodic Task
-*/
-void f2(int class, int group) {
 
-  int total = (int)(TIME2 / WAIT_TIME);
+int f1(int _n1, int _n2){
 
-  for (int i = 0; i < total; i++) {
-    wait_time();
+  /*truct timespec temp1,temp2;
+  clock_gettime(CLOCK_MONOTONIC, &temp1);
+
+  do{
+    clock_gettime(CLOCK_MONOTONIC, &temp2);
+  }while( Calculate_dt(temp1, temp2).tv_nsec/1000000 < 33);
+  return _n1 + _n2;*/
+  /*int k = _n1;
+  for(int i = 0; i < 1000000*6; i++){
+    k = k + _n2 + i;	
   }
+
+  return k;*/
+
+ struct timespec temp1,temp2, dt;
+  for(int i= 0; i < 38; i++){
+    clock_gettime(CLOCK_MONOTONIC, &temp1);
+    do{
+      clock_gettime(CLOCK_MONOTONIC, &temp2);
+      dt = Calculate_dt(temp1,temp2);
+    }while(dt.tv_nsec < 1000000);
+  }
+
+  return 0;
+}
+
+
+int f2(int _n1, int _n2){
+
+
+    struct timespec temp1,temp2, dt;
+     for(int i= 0; i < 58; i++){
+       clock_gettime(CLOCK_MONOTONIC, &temp1);
+       do{
+         clock_gettime(CLOCK_MONOTONIC, &temp2);
+         dt = Calculate_dt(temp1,temp2);
+       }while(dt.tv_nsec < 1000000);
+     }
+
+     return 0;
+}
+
+
+int f3(int _n1, int _n2){
+
+    struct timespec temp1,temp2, dt;
+     for(int i= 0; i < 88; i++){
+       clock_gettime(CLOCK_MONOTONIC, &temp1);
+       do{
+         clock_gettime(CLOCK_MONOTONIC, &temp2);
+         dt = Calculate_dt(temp1,temp2);
+       }while(dt.tv_nsec < 1000000);
+     }
+
+
+     return 0;
 
 }
-/*
-* Third periodic Task
-*/
-void f3(int class, int group) {
-
-  int total = (int)(TIME3 / WAIT_TIME);
-
-  for (int i = 0; i < total; i++) {
-    wait_time();
-  }
-
-}
-/*
-* Emulate a task of real computation with the same time of computation of such task
-*/
-void wait_time() {
-
-  struct timespec finish, current;
-
-  /* Setting Time in nanoseconds */
-  finish = SET((int)WAIT_TIME, 0);
-
-  if (clock_gettime(CLOCK_MONOTONIC, &current) == -1) {
-    threadErrorExit("Errror on geting time!");
-  }
-
-  finish = SUM(current, finish);
-
-  while (IF_UPPER(finish, current) == 1) {
-    if (clock_gettime(CLOCK_MONOTONIC, &current) == -1) {
-      threadErrorExit("Errror on geting time!");
-    }
-  }
-}
-/*
-* Error Geting Time
-*/
-// void error_gettime(struct &current) {
-//   if (clock_gettime(CLOCK_MONOTONIC, &current) == -1) {
-//     threadErrorExit("Errror on geting time!");
-//   }
-// }
