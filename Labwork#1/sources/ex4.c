@@ -18,12 +18,12 @@
 // Activation periods
 #define PERIOD1_MS 100
 #define PERIOD2_MS 200
-#define PERIOD3_MS 300 
+#define PERIOD3_MS 300
 
 #define NUMBER_THREADS 3
 
-// Activation time for each thread 
-struct timespec activation_time[3];
+// Activation time for each thread
+struct timespec activation_time[NUMBER_THREADS];
 
 /*
   switch_time - time when to switch priority orders
@@ -31,177 +31,183 @@ struct timespec activation_time[3];
  */
 struct timespec switch_time, switch_dt;
 
-
-// Variable to hold the worst response time
-struct timespec worse_response_time[6] = { {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}};
-
 pthread_t thr[NUMBER_THREADS];
 
-//  This thread will run f1() and switch the priority order from RMPO to it's inverse
+//  Variable to hold the worst response time
+struct timespec worse_response_time[3] = { {0,0}, {0,0}, {0,0}};
+
+
+
+// Thread that runs f1(). Switch priority orders from RMPO to inverse RMPO
 void* function1(void* arg){
-  //wait so that all tasks activate at the same time
-  clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &activation_time[0], NULL);
 
-  //Create timespec holding the activation period (100ms)
-  struct timespec dt; dt.tv_sec = 0; dt.tv_nsec = (PERIOD1_MS)* 1000000;
-  while(1){
-    struct timespec temp;
-    
-    f1(2,3);
-    clock_gettime(CLOCK_MONOTONIC, &temp);
-    struct timespec response_time = SUM(temp, activation_time[0]);
-    // Execution end time
-    //clock_gettime(CLOCK_MONOTONIC, &response_time);
+    // Wait for all tasks activate at the same time
+    clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &activation_time[0], NULL);
 
-    // Calculate response time
-    response_time = DIFF(response_time, activation_time[0]);
 
-    // Check if it's the worse response time so far
-    struct timespec temp2 = DIFF(worse_response_time[0], response_time);
-    if(temp2.tv_sec < 0 || temp2.tv_nsec < 0){
-      worse_response_time[0] = response_time;
+    // Create timespec for activation period
+    struct timespec dt; dt.tv_sec = 0; dt.tv_nsec = (PERIOD1_MS)* 1000000;
+
+    while(1){
+
+        struct timespec temp;
+
+        f1(2,3);
+
+        // Execution time
+        clock_gettime(CLOCK_MONOTONIC, &temp);
+        struct timespec response_time = DIFF(temp, activation_time[0]);
+
+        // Check if it's the worse response time so far
+        struct timespec temp2 = DIFF(worse_response_time[0], response_time);
+        if(temp2.tv_sec < 0 || temp2.tv_nsec < 0){
+        worse_response_time[0] = response_time;
+        }
+
+        // Increment activation time
+        activation_time[0] = SUM(activation_time[0], dt);
+
+
+        // Get priority of this thread to know if running RMPO
+        struct sched_param actual; int actual_int;
+        pthread_getschedparam(pthread_self(),&actual_int, &actual);
+        int priority = actual.sched_priority;
+
+        // Check if switch time was reached
+        temp = DIFF(switch_time, temp);
+        if(priority == sched_get_priority_max(SCHED_FIFO) && (temp.tv_sec < 0 || temp.tv_nsec < 0) ){
+
+        printf("Task 1 worse response time: %LFms\n", time2ms(worse_response_time[0]));
+        printf("Task 2 worse response time: %LFms\n", time2ms(worse_response_time[1]));
+        printf("Task 3 worse response time: %LFms\n", time2ms(worse_response_time[2]));
+
+        worse_response_time[0].tv_sec = 0; worse_response_time[0].tv_nsec = 0;
+        worse_response_time[1].tv_sec = 0; worse_response_time[1].tv_nsec = 0;
+        worse_response_time[2].tv_sec = 0; worse_response_time[2].tv_nsec = 0;
+        printf("======Switch to inverse RMPO======\n");
+
+        // Time at which priority changed
+        clock_gettime(CLOCK_MONOTONIC, &switch_time);
+
+        // Set switch_time to current time + switch_dt
+        switch_time = SUM(switch_time, switch_dt);
+
+        // Switch task 1 and 3 priorities
+        pthread_setschedprio(thr[2],sched_get_priority_max(SCHED_FIFO));
+        pthread_setschedprio(thr[0],sched_get_priority_max(SCHED_FIFO)-2);
+
+        }
+
+        // Sleep until next activation time is reached
+        clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &activation_time[0], NULL);
     }
 
-    // Increment activation time
-    activation_time[0] = SUM(activation_time[0], dt);
+}
 
-    // Get priority of this thread to know if running RMPO
-    struct sched_param actual; int actual_int;
-    pthread_getschedparam(pthread_self(),&actual_int, &actual);
-    int priority_number = actual.sched_priority;
 
-    temp = DIFF(switch_time, temp);
-    printf("Prioridade: %i. Temp: %LF \n", priority_number, time2ms(temp) );
-    if(priority_number == sched_get_priority_max(SCHED_FIFO) && (temp.tv_sec < 0 || temp.tv_nsec < 0) ){
-        
-        printf("Task 1 worse response time: %LF ms\n", time2ms(worse_response_time[0]));
-        printf("Task 2 worse response time: %LF ms\n", time2ms(worse_response_time[1]));
-        printf("Task 3 worse response time: %LF ms\n", time2ms(worse_response_time[2]));
-        
+// Thread that runs f2().
+void* function2(void* arg){
+    // Wait for all tasks activate at the same time
+    clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &activation_time[1], NULL);
+
+    // Create timespec for activation period
+    struct timespec dt; dt.tv_sec = 0; dt.tv_nsec = (PERIOD2_MS)* 1000000;
+    while(1){
+
+        struct timespec temp;
+
+        f2(2,3);
+
+        // Execution time
+        clock_gettime(CLOCK_MONOTONIC, &temp);
+        struct timespec response_time = DIFF(temp, activation_time[1]);
+
+        struct sched_param actual; int actual_int;
+        pthread_getschedparam(thr[1],&actual_int, &actual);
+
+        // Check if it's the worse response time so far
+        struct timespec temp2 = DIFF(worse_response_time[1], response_time);
+        if(temp2.tv_sec < 0 || temp2.tv_nsec < 0){
+        worse_response_time[1] = response_time;
+        }
+
+        // Increment activation time
+        activation_time[1] = SUM(activation_time[1], dt);
+
+        // Sleep until next activation time is reached
+        clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &activation_time[1], NULL);
+    }
+
+}
+
+
+
+// Thread that runs f3(). This thread switch the prioritys order from inverse RMPO to RMPO.
+void* function3(void* arg){
+    // Wait for all tasks activate at the same time
+    clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &activation_time[2], NULL);
+
+    // Create timespec for activation period
+    struct timespec dt; dt.tv_sec = 0; dt.tv_nsec = (PERIOD3_MS)* 1000000;
+    while(1){
+
+        struct timespec temp;
+
+        f3(2,3);
+
+
+        // Execution time
+        clock_gettime(CLOCK_MONOTONIC, &temp);
+        struct timespec response_time = DIFF(temp, activation_time[2]);
+
+        struct timespec temp2 = DIFF(worse_response_time[2], response_time);
+        if(temp2.tv_sec < 0 || temp2.tv_nsec < 0){
+        worse_response_time[2] = response_time;
+        }
+
+        // Increment activation time
+        activation_time[2] = SUM(activation_time[2], dt);
+
+
+
+        // Get priority of the thread to know if it's running on inverse RMPO
+        struct sched_param actual; int actual_int;
+        pthread_getschedparam(pthread_self(),&actual_int, &actual);
+        int priority = actual.sched_priority;
+
+        // Check if switch time was reached
+        temp = DIFF(switch_time, temp);
+        if(priority == sched_get_priority_max(SCHED_FIFO) && (temp.tv_sec < 0 || temp.tv_nsec < 0) ){
+
+        printf("Task 1 worse response time: %LFms\n", time2ms(worse_response_time[0]));
+        printf("Task 2 worse response time: %LFms\n", time2ms(worse_response_time[1]));
+        printf("Task 3 worse response time: %LFms\n", time2ms(worse_response_time[2]));
+
         worse_response_time[0].tv_sec = 0; worse_response_time[0].tv_nsec = 0;
         worse_response_time[1].tv_sec = 0; worse_response_time[1].tv_nsec = 0;
         worse_response_time[2].tv_sec = 0; worse_response_time[2].tv_nsec = 0;
 
-        printf("======Switch to inverse RMPO======\n");
+        printf("======Switch to RMPO======\n");
+
+        // Time at which priority changed
         clock_gettime(CLOCK_MONOTONIC, &switch_time);
-        //set switch_time to current time + switch_dt
+
+        // Set switch_time to current time + switch_dt
         switch_time = SUM(switch_time, switch_dt);
-        //Switch task 1 and 3 priorities
-        pthread_setschedprio(thr[2],sched_get_priority_max(SCHED_FIFO));
-        pthread_setschedprio(thr[0],sched_get_priority_max(SCHED_FIFO)-2);
-        
-    }
+
+        // Switch task 1 and 3 priorities
+        pthread_setschedprio(thr[0],sched_get_priority_max(SCHED_FIFO));
+        pthread_setschedprio(thr[2],sched_get_priority_max(SCHED_FIFO)-2);
 
 
-    //Sleep until next activation time is reached
-    clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &activation_time[0], NULL);
-  }
-
-}
-
-/*
-  This thread will run f2()
-*/
-void* function2(void* arg){
-  //wait so that all tasks activate at the same time
-  clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &activation_time[1], NULL);
-
-  //Create timespec holding the activation period (200ms)
-  struct timespec dt; dt.tv_sec = 0; dt.tv_nsec = (PERIOD2_MS)* 1000000;
-  while(1){
-
-
-    f2(2,3);
-
-    struct timespec response_time;
-    //Log execution end time
-    clock_gettime(CLOCK_MONOTONIC, &response_time);
-
-    //calculate response time
-    response_time = DIFF(response_time, activation_time[1]);
-
-    struct sched_param actual; int actual_int;
-    pthread_getschedparam(thr[1],&actual_int, &actual);
-
-    //check if it's the worse response time so far
-    struct timespec temp = DIFF(worse_response_time[1], response_time);
-    if(temp.tv_sec < 0 || temp.tv_nsec < 0){
-      worse_response_time[1] = response_time;
-    }
-
-    //Increment activation time
-    activation_time[1] = SUM(activation_time[1], dt);
-
-    //Sleep until next activation time is reached
-    clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &activation_time[1], NULL);
-  }
-
-}
-
-
-/*
-  This thread will run f3()
-*/
-void* function3(void* arg){
-  //wait so that all tasks activate at the same time
-  clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &activation_time[2], NULL);
-
-  //Create timespec holding the activation period (360ms)
-  struct timespec dt; dt.tv_sec = 0; dt.tv_nsec = (PERIOD3_MS)* 1000000;
-  while(1){
-    
-    
-        f3(2,3);
-    
-        struct timespec response_time;
-        // Log execution end time
-        clock_gettime(CLOCK_MONOTONIC, &response_time);
-    
-        // Calculate response time
-        response_time = DIFF(response_time, activation_time[2]);
-    
-        // Check if it's the worse response time so far
-        struct timespec temp = DIFF(worse_response_time[2], response_time);
-        if(temp.tv_sec < 0 || temp.tv_nsec < 0){
-          worse_response_time[2] = response_time;
         }
-    
-        // Increment activation time
-        activation_time[2] = SUM(activation_time[2], dt);
-    
-        // Get priority of this thread to know if running RMPO
-        struct sched_param actual; int actual_int;
-        pthread_getschedparam(pthread_self(),&actual_int, &actual);
-        int priority_number = actual.sched_priority;
-    
-        temp = DIFF(switch_time, response_time);
-    
-        if(priority_number == sched_get_priority_max(SCHED_FIFO) && (temp.tv_sec < 0 || temp.tv_nsec < 0) ){
-            
-            printf("Task 1 worse response time: %LF ms\n", time2ms(worse_response_time[0]));
-            printf("Task 2 worse response time: %LF ms\n", time2ms(worse_response_time[1]));
-            printf("Task 3 worse response time: %LF ms\n", time2ms(worse_response_time[2]));
-            
-            worse_response_time[0].tv_sec = 0; worse_response_time[0].tv_nsec = 0;
-            worse_response_time[1].tv_sec = 0; worse_response_time[1].tv_nsec = 0;
-            worse_response_time[2].tv_sec = 0; worse_response_time[2].tv_nsec = 0;
-    
-            printf("======Switch to inverse RMPO======\n");
-            clock_gettime(CLOCK_MONOTONIC, &switch_time);
-            //set switch_time to current time + switch_dt
-            switch_time = SUM(switch_time, switch_dt);
-            //Switch task 1 and 3 priorities
-            pthread_setschedprio(thr[0],sched_get_priority_max(SCHED_FIFO));
-            pthread_setschedprio(thr[2],sched_get_priority_max(SCHED_FIFO)-2);
-            
-        }
-    
-    
-        //Sleep until next activation time is reached
+ 
+        // Sleep until next activation time is reached
         clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &activation_time[2], NULL);
-      }
 
+    }
 }
+
 
 int main(){
 
@@ -211,15 +217,14 @@ int main(){
     // Set all activation to 2 seconds after the current time
     struct timespec dt; dt.tv_sec = 2; dt.tv_nsec = 0;
 
-    //lock memory 
+    // Lock memory 
     mlockall(MCL_CURRENT|MCL_FUTURE);
   
     // Set threads affinity to CPU 0
     CPU_ZERO(&my_set);
     CPU_SET(0, &my_set);
   
-    /* Set the main thread to lowest priority
-        without this the response times changed between switches */
+    // Set the main thread to lowest priority without this the response times changed between switches
     pthread_t self = pthread_self();
     pthread_setschedprio(self, sched_get_priority_min(SCHED_FIFO));
 
@@ -264,14 +269,13 @@ int main(){
     pthread_attr_setschedparam(&attr[1],&priority[1]);
     pthread_attr_setschedparam(&attr[2],&priority[2]);
 
-
-    // Set priority switch time 
+    /* Set priority switch time */
     switch_dt.tv_sec = 5; switch_dt.tv_nsec = 0;
     clock_gettime(CLOCK_MONOTONIC, &switch_time);
     switch_time = SUM(switch_time, switch_dt);
 
-    // Create all the threads
-    printf("======Switch to RMPO======\n");
+    /* Create all the threads */
+    printf("======Starting in RMPO======\n");
     if(pthread_create(&(thr[0]), &attr[0], function1, NULL) < 0){
         printf("Error %s\n",strerror(errno));
         exit(0);
@@ -286,23 +290,16 @@ int main(){
     }
 
 
-    /*
-        This will sleep for 5 seconds, then cancel all threads and print the worst
-        response times.
-    */
+    /* Sleep for 35 seconds and then cancel all threads*/
     while(1){
-        sleep(5);
+
+        sleep(35);
         pthread_cancel(thr[0]);
         pthread_cancel(thr[1]);
         pthread_cancel(thr[2]);
-        /* printf("1 - worse response time: %LF ms\n", time2ms(worse_response_time[0]));
-        worse_response_time[0].tv_sec = 0; worse_response_time[0].tv_nsec = 0;
-        printf("2 - worse response time: %LF ms\n", time2ms(worse_response_time[1]));
-        worse_response_time[1].tv_sec = 0; worse_response_time[1].tv_nsec = 0;
-        printf("3 - worse response time: %LF ms\n", time2ms(worse_response_time[2]));
-        worse_response_time[2].tv_sec = 0; worse_response_time[2].tv_nsec = 0; */
-
+        printf("Done!\n");
         exit(0);
+        //pause();
     }
 
 
