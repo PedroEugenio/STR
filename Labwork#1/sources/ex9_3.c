@@ -28,8 +28,8 @@
 #define PRERIOD_T3 300
 
 /* Start and Finish Time of threads in s */
-#define START       3  // WAIT_TIME do IVO
-#define FINISH      6  // TIME_OF_EXECUTION do Ivo
+#define START       3
+#define FINISH      6  
 
 #ifndef errorExit
 #define errorExit(msg) do{ perror(msg); exit(EXIT_FAILURE); }while(0)
@@ -128,7 +128,7 @@ int main() {
   /* Final results... for each task */
   do {
     printf("\n\nWaiting...\n\n");
-    // Adormece a main Thread (quando voltar a acordar esta cancala as outras)
+    /* Main thread go to sleep when wake up it will cancel tasks threads */
     sleep(FINISH);
 
     for (int i = 0; i < TASKS; i++) {
