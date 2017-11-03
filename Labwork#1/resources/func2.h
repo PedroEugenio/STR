@@ -9,13 +9,7 @@
 
 
 #ifndef threadErrorExit
-#define threadErrorExit(msg)
-
-  do {
-    perror(mg);
-    pthread_exit(NULL);
-  } while(0);
-
+#define threadErrorExit(msg) do { perror(msg); pthread_exit(NULL); } while(0)
 #endif
 
 #define TIME1         38000000 	// ns

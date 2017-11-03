@@ -22,29 +22,37 @@
 /* Number of Threads */
 #define TASKS      3
 
+#define CLASS      1
+#define GROUP      3
+
 /* Activation periods in ms */
 #define PRERIOD_T1 100
 #define PRERIOD_T2 200
 #define PRERIOD_T3 300
 
 /* Start and Finish Time of threads in s */
-#define START       3
-#define FINISH      6  
+#define START       2
+#define FINISH      35
+#define SWITCH      5
 
 #ifndef errorExit
 #define errorExit(msg) do{ perror(msg); exit(EXIT_FAILURE); }while(0)
 #endif
 
 /* Activation time for each thread */
-struct timespec start_time; // [TASKS]
+struct timespec start_time, switch_time; // [TASKS]
 struct timespec response_time[TASKS] = {{0,0}, {0,0}, {0,0}};
+
+/* For Exercise 9_4 we make global */
+pthread_t thread[3];
 
 void* task1(void *arg);
 void* task2(void *arg);
 void* task3(void *arg);
+void response_times();
 
 int main() {
-  printf("\n\nProblem 9_3...\n\n");
+  printf("\n\nProblem 9_4...\n\n");
 
   struct timespec current_time;
 
@@ -62,7 +70,6 @@ int main() {
 
 
   cpu_set_t mask;
-  pthread_t thread[3];
   pthread_attr_t attr[3];
   struct sched_param priority[3];
 
@@ -104,7 +111,7 @@ int main() {
     if( (priority[i].sched_priority = sched_get_priority_max(POLICY2USE)) == -1)
       errorExit("main->sched_get_priority_max");
 
-    /* <----- Ex3 */
+    /* ----------> Ex3 <---------- */
     priority[i].sched_priority -= i;
     printf("Priority of Task %d: %d\n", i+1, priority[i].sched_priority);
 
@@ -113,8 +120,17 @@ int main() {
 
   }/* end of for */
 
+  /* ----------> Ex4 <---------- */
+  /* Set the main thread to lowest priority */
+  //pthread_t main_thread = pthread_self();
+  pthread_setschedprio(pthread_self(), sched_get_priority_min(POLICY2USE));
 
-  /* Create threads for all tasks */
+  /* Initialize switch time */
+  switch_time = SUM(switch_time, SET(SWITCH, 0));
+
+  /* ----------> Ex4 <---------- */
+
+  /* Create threads for all tasks. They will start in RMPO */
   if(pthread_create(&(thread[0]), &(attr[0]), task1, NULL) < 0)
     errorExit("main->pthread_create");
 
@@ -134,14 +150,9 @@ int main() {
     for (int i = 0; i < TASKS; i++) {
       pthread_cancel(thread[i]);
     }
-    printf("TASK 1 - Response time: %LFs or %LFms\n", time2s(response_time[0]), time2ms(response_time[0]));
-    printf("TASK 2 - Response time: %LFs or %LFms\n", time2s(response_time[1]), time2ms(response_time[1]));
-    printf("TASK 3 - Response time: %LFs or %LFms\n", time2s(response_time[2]), time2ms(response_time[2]));
+    printf("Inverse RMPO response times:\n");
+    response_times();
 
-    /* Clear responses times */
-    for (int i = 0; i < TASKS; i++) {
-      response_time[i] = SET(0, 0);
-    }
     exit(EXIT_SUCCESS);
   } while(1);
 }
@@ -152,7 +163,7 @@ int main() {
 */
 void* task1(void *arg) {
 
-  struct timespec _time, last_activation;
+  struct timespec _time, aux_time, last_activation;
 
   // Set Period and initialize next activation equal to start time
   // It will guarantee that in first interection they will start at the same time
@@ -167,15 +178,43 @@ void* task1(void *arg) {
     rt_task_wait_period();
 
     // Execute the task in her period
-    f1(1,3);
+    f1(CLASS, GROUP);
     // Capture the actual time
     clock_gettime(CLOCK_MONOTONIC, &_time);
     // Response time = current_time - last_start_time
-    _time = DIFF(_time, last_activation);// DIFF(next_activation, aux_time); -> valor positivo
+    aux_time = DIFF(_time, last_activation);// DIFF(next_activation, aux_time); -> valor positivo
     // Get the worse time:
-    if(IF_UPPER(_time, response_time[0]))
-      response_time[0] = _time;
-  }
+    if(IF_UPPER(aux_time, response_time[0]))
+      response_time[0] = aux_time;
+
+    /* --------> Exercise 4 <-------- */
+    struct sched_param parameters;
+    int policy, priority;
+
+    // Get priority of the thread to know if is running RMPO
+    pthread_getschedparam(pthread_self(), &policy, &parameters); // thread[0]
+
+    priority = parameters.sched_priority;
+    //_time = DIFF(switch_time, _time);
+    //printf("%LF\n", time2ms(_time)); //
+    // Check if switch time was reached
+    if(priority == sched_get_priority_max(POLICY2USE) && IF_UPPER(_time, switch_time) ){ //IF_UPPER(_time, switch_time) (_time.tv_sec < 0 || _time.tv_nsec < 0)
+
+      printf("RMPO response times:\n");
+      response_times();
+
+      // Switch to inverse RMPO
+      clock_gettime(CLOCK_MONOTONIC, &_time);
+
+      // Set switchTime = current_time + switch_delay
+      switch_time = SUM(_time, SET(SWITCH, 0));
+
+      // Switch Task 1 and 3 priorities
+      pthread_setschedprio(thread[2], sched_get_priority_max(POLICY2USE));
+      pthread_setschedprio(thread[0], sched_get_priority_max(POLICY2USE)-2);
+    }
+    /* --------> Exercise 4 <-------- */
+  }/* end of while */
 }
 /*
 *
@@ -199,7 +238,7 @@ void* task2(void *arg) {
     rt_task_wait_period();
 
     // Execute the task in her period
-    f2(1,3);
+    f2(CLASS, GROUP);
     // Capture the actual time
     clock_gettime(CLOCK_MONOTONIC, &_time);
     // Response time = current_time - last_start_time
@@ -207,8 +246,8 @@ void* task2(void *arg) {
     // Get the worse time:
     if(IF_UPPER(_time, response_time[1]))
       response_time[1] = _time;
-  }
 
+  }/* end of while */
 }
 /*
 *
@@ -217,7 +256,7 @@ void* task2(void *arg) {
 */
 void* task3(void *arg) {
 
-  struct timespec _time, last_activation;
+  struct timespec _time, aux_time, last_activation;
 
   // Set Period and initialize next activation equal to start time
   // It will guarantee that in first interection they will start at the same time
@@ -232,13 +271,51 @@ void* task3(void *arg) {
     rt_task_wait_period();
 
     // Execute the task in her period
-    f3(1,3);
+    f3(CLASS, GROUP);
     // Capture the actual time
     clock_gettime(CLOCK_MONOTONIC, &_time);
     // Response time = current_time - last_start_time
-    _time = DIFF(_time, last_activation);// DIFF(next_activation, aux_time); -> valor positivo
+    aux_time = DIFF(_time, last_activation);// DIFF(next_activation, aux_time); -> valor positivo
     // Get the worse time:
-    if(IF_UPPER(_time, response_time[2]))
-      response_time[2] = _time;
+    if(IF_UPPER(aux_time, response_time[2]))
+      response_time[2] = aux_time;
+
+    /* --------> Exercise 4 <-------- */
+    struct sched_param parameters;
+    int policy, priority;
+
+    // Get priority of the thread to know if is running RMPO
+    pthread_getschedparam(pthread_self(), &policy, &parameters); // thread[1]
+
+    priority = parameters.sched_priority;
+    //_time = DIFF(switch_time, _time);
+    // Check if switch time was reached
+    if(priority == sched_get_priority_max(POLICY2USE) && IF_UPPER(_time, switch_time)){
+
+      printf("RMPO response times:\n");
+      response_times();
+
+      // Switch to inverse RMPO
+      clock_gettime(CLOCK_MONOTONIC, &_time);
+
+      // Set switchTime = current_time + switch_delay
+      switch_time = SUM(_time, SET(SWITCH, 0));
+
+      // Switch Task 1 and 2 priorities
+      pthread_setschedprio(thread[0], sched_get_priority_max(POLICY2USE));
+      pthread_setschedprio(thread[2], sched_get_priority_max(POLICY2USE)-2);
+    }
+    /* --------> Exercise 4 <-------- */
+  }
+}
+void response_times() {
+  /* Print response_times */
+  printf("TASK 1: %LFs or %LFms\n", time2s(response_time[0]), time2ms(response_time[0]));
+  printf("TASK 2: %LFs or %LFms\n", time2s(response_time[1]), time2ms(response_time[1]));
+  printf("TASK 3: %LFs or %LFms\n", time2s(response_time[2]), time2ms(response_time[2]));
+
+  /* Clear responses times */
+  for (int i = 0; i < TASKS; i++) {
+    response_time[i] = SET(0, 0);
   }
 }
