@@ -9,32 +9,23 @@ struct Coord{
     float z;
 };
 
+int count_points = 0; //Global variable acessible in all functions
 
-
-void read_file(struct Coord *coord, FILE *fptr, int count_points);
+void read_file(struct Coord *coord, FILE *fptr);
+void calc_average(struct Coord *coord,float *average);
 
 
 int main(){
     struct Coord coord[NUM_POINTS];   
-  
     FILE *fptr;
-    int count_points=0;
-  
-    read_file(coord, fptr,count_points);
-  
-  
-     /* Calculate min, max, average and std*/
-    printf("We are calculate...\n", );
+    float average[3];
 
-    /* a point to float array */
-    int float average = calc_average(coord);
-
-    printf("Average - x: %lf y: %lf z: %lf\n", *(average), *(average+1), *(average+2));
-
-    //printf("Min - x: %lf y: %lf z: %lf\n", );
-    //printf("Max - x: %lf y: %lf z: %lf\n", );
-    printf("Average - x: %lf y: %lf z: %lf\n", );
-    //printf("STD - x: %lf y: %lf z: %lf\n", );
+    read_file(coord, fptr);
+    /* average = (float *)malloc(sizeof(float)); */
+    calc_average(coord, average);
+    printf("Number of points: %i\n",count_points);
+   
+    printf("%.4f %.4f %.4f \n", average[0], average[1], average[2]);
 
     
     return 0;
@@ -46,7 +37,7 @@ int main(){
 * Issues:
 *
 *******************************************************************************/
-void read_file(struct Coord *coord, FILE *fptr,int count_points){
+void read_file(struct Coord *coord, FILE *fptr){
     
     printf("Opening the file \n");
     fptr = fopen("../resources/point_cloud1.txt","r");  // Open the file
@@ -55,21 +46,17 @@ void read_file(struct Coord *coord, FILE *fptr,int count_points){
         exit(1);
     }
 
-    int i=0;
-
     // Verify if the document reached to an end
-    while( !feof (fptr) ){
+    while( !feof (fptr) ){ 
         // Saves the values from .txt file to the variables
         fscanf(fptr, "%f %f %f", &coord[count_points].x, &coord[count_points].y, &coord[count_points].z);
-        //printf("%.4f %.4f %.4f \n", coord[i].x, coord[i].y, coord[i].z);
-        count_points++;
+        //printf("%.4f %.4f %.4f \n", coord[count_points].x, coord[count_points].y, coord[count_points].z);
+        count_points++;  // last line of coord is all 0
     }
-
-    printf("Number of points: %i\n",count_points);
+    count_points-=1;
+    
     fclose(fptr);
-    printf("Closing the file...\n");
-  
-    return 0;
+    printf("Closing the file \n");
 }
 
 /*******************************************************************************
@@ -98,20 +85,16 @@ void calc_max() {
 * Issues:
 *
 *******************************************************************************/
-float * calc_average(struct Coord *coord) {
+void calc_average(struct Coord *coord, float *average) {
 
-  float average[3]; //sum_x = 0.0, sum_y = 0.0, sum_z = 0.0;
-
-  for(int i = 0; i < NUM_POINTS; i++){
+  for(int i = 0; i < count_points; i++){ 
     average[0] += coord[i].x;
     average[1] += coord[i].y;
     average[2] += coord[i].z;
-  }
-  average[0] = average[0]/NUM_POINTS;
-  average[1] = average[0]/NUM_POINTS;
-  average[2] = average[0]/NUM_POINTS;
-
-  return average;
+}
+    average[0] /= count_points; 
+    average[1] /= count_points;
+    average[2] /= count_points;
 }
 /*******************************************************************************
 *
