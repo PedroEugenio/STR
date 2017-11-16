@@ -10,15 +10,16 @@ struct Coord{
 };
 
 
-void read_file(struct Coord *coord, FILE *fptr);
+
+void read_file(struct Coord *coord, FILE *fptr, int count_points);
 
 
 int main(){
-    struct Coord coord[NUM_POINTS];
-    
+    struct Coord coord[NUM_POINTS];   
     FILE *fptr;
+    int count_points=0;
 
-    read_file(coord, fptr);
+    read_file(coord, fptr,count_points);
     
     return 0;
 }
@@ -29,8 +30,8 @@ int main(){
 * Issues:
 *
 *******************************************************************************/
-void read_file(struct Coord *coord, FILE *fptr){
-    int i=0;
+void read_file(struct Coord *coord, FILE *fptr,int count_points){
+    
     printf("Opening the file \n");
     fptr = fopen("../resources/point_cloud1.txt","r");  // Open the file
     if(fptr == NULL){
@@ -41,11 +42,11 @@ void read_file(struct Coord *coord, FILE *fptr){
     // Verify if the document reached to an end
     while( !feof (fptr) ){ 
         // Saves the values from .txt file to the variables
-        fscanf(fptr, "%f %f %f", &coord[i].x, &coord[i].y, &coord[i].z);
-        printf("%.4f %.4f %.4f \n", coord[i].x, coord[i].y, coord[i].z);
-        i++;
+        fscanf(fptr, "%f %f %f", &coord[count_points].x, &coord[count_points].y, &coord[count_points].z);
+        //printf("%.4f %.4f %.4f \n", coord[i].x, coord[i].y, coord[i].z);
+        count_points++;
     }
-  
+    printf("Number of points: %i\n",count_points);
     fclose(fptr);
     printf("Closing the file \n");
 }
