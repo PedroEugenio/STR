@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 
 #define NUM_POINTS 20000
 
@@ -15,6 +16,7 @@ void read_file(struct Coord *coord, FILE *fptr);
 void calc_average(struct Coord *coord,float *average);
 void calc_min(struct Coord *coord, float *min);
 void calc_max(struct Coord *coord, float *min);
+void  calc_std(struct Coord *coord, float *average, float *s); 
 
 
 int main(){
@@ -23,19 +25,24 @@ int main(){
     float average[3];
     float min[3];
     float max[3];
+    float s[3]; //standard deviation
 
     fptr = (FILE *)malloc(sizeof(FILE));
     read_file(coord, fptr);
     free(fptr);
-    calc_average(coord, average);
     printf("Number of points: %i\n",count_points);
-    printf("Average Value - x:%.4f y:%.4f z:%.4f\n", average[0], average[1], average[2]);
+
+    calc_average(coord, average);
+    printf("Average Value :: x:%.4f y:%.4f z:%.4f\n", average[0], average[1], average[2]);
 
     calc_min(coord, min);
-    printf("Minimum Value - x:%.4f y:%.4f z:%.4f \n", min[0], min[1], min[2]);
+    printf("Minimum Value :: x:%.4f y:%.4f z:%.4f \n", min[0], min[1], min[2]);
 
     calc_max(coord, max);
-    printf("Maximum Value - x:%.4f y:%.4f z:%.4f \n", max[0], max[1], max[2]);
+    printf("Maximum Value :: x:%.4f y:%.4f z:%.4f \n", max[0], max[1], max[2]);
+
+    calc_std(coord, average, s);
+    printf("Standard Deviation Value :: x:%.4f y:%.4f z:%.4f \n", s[0], s[1], s[2]);
 
     
     return 0;
@@ -48,8 +55,7 @@ int main(){
 *
 *******************************************************************************/
 void read_file(struct Coord *coord, FILE *fptr){
-    
-    printf("Opening the file \n");
+
     fptr = fopen("../resources/point_cloud1.txt","r");  // Open the file
     if(fptr == NULL){
         perror("fopen()");
@@ -66,7 +72,6 @@ void read_file(struct Coord *coord, FILE *fptr){
     count_points-=1;
     
     fclose(fptr);
-    printf("Closing the file \n");
 }
 
 /*******************************************************************************
@@ -108,6 +113,7 @@ void calc_max(struct Coord *coord, float *max) {
     }
 
 }
+
 /*******************************************************************************
 *
 * Objective: Calculate average points of a PointCloud file
@@ -131,8 +137,15 @@ void calc_average(struct Coord *coord, float *average) {
 * Issues:
 *
 *******************************************************************************/
-void  calc_std() {
+void  calc_std(struct Coord *coord, float *average, float *s) {
 
+    for(int i = 0; i < count_points; i++){ 
+        s[0] += pow(coord[i].x - average[0],2);
+        s[1] += pow(coord[i].y - average[1],2);
+        s[2] += pow(coord[i].z - average[2],2);
+    }
 
-
+    s[0] = sqrt(s[0]/count_points);
+    s[1] = sqrt(s[1]/count_points);
+    s[2] = sqrt(s[2]/count_points);
 }
