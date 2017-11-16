@@ -27,6 +27,10 @@ int main(){
         printf("%.4f %.4f %.4f \n", coord[i].x, coord[i].y, coord[i].z);
         i++;
     }
+
+
+
+    
         
     fclose(fptr);
     printf("Closing the file \n");
