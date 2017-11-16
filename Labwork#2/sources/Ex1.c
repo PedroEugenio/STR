@@ -1,4 +1,7 @@
+#include <stdlib.h>
 #include <stdio.h>
+
+#define NUM_POINTS 20000
 
 struct Coord{
     float x;
@@ -7,20 +10,21 @@ struct Coord{
 };
 
 int main(){
-    struct Coord coord[];
+    struct Coord coord[NUM_POINTS];
     printf("Opening the file \n");
     FILE *fptr;
-    fptr = fopen("point_cloud.txt","r");  // Open the file
+    fptr = fopen("../resources/point_cloud1.txt","r");  // Open the file
     if(fptr == NULL){
         perror("fopen()"); 
         exit(1);             
     }
-        
+    
+    int i=0;
     // Verify if the document reached to an end
     while( !feof (fptr) ){ 
-        // Saves the values from .dat file to the variables
-        fscanf(fptr, "%f %f %f %f", &coord[i].x, &line_body[i].y, &line_body[i].z, &line_body[i].m);
-        //printf("%.1f %.1f %.1f %.1f \n", line_body[i].x, line_body[i].y, line_body[i].z, line_body[i].m);
+        // Saves the values from .txt file to the variables
+        fscanf(fptr, "%f %f %f", &coord[i].x, &coord[i].y, &coord[i].z);
+        printf("%.4f %.4f %.4f \n", coord[i].x, coord[i].y, coord[i].z);
         i++;
     }
         

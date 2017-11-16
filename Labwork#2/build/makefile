@@ -31,8 +31,8 @@ clean:
 test_time: ${SOURCES}/test_time.c ${RESOURCES}/timespec.h
 	${CC} ${cflags} ${SOURCES}/test_time.c -o ${DEVEL}/test_time
 
-ex1:
-	${CC} ${cflags} ${SOURCES}/ex1.c ${RESOURCES}/func.o -o ${DEVEL}/ex1 -lm
+Ex1:
+	${CC} ${cflags} ${SOURCES}/Ex1.c -o ${DEVEL}/Ex1 -lm
 
 
 ex3: ${SOURCES}/ex3.c ${RESOURCES}/timespec.c ${HEADERS}
