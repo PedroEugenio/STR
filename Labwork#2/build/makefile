@@ -15,7 +15,7 @@ DEVEL = ../devel
 # Header files
 HEADERS  = ${RESOURCES}/func.h ${RESOURCES}/timespec.h
 # Code files to compiling
-FILES = test_time ex1 ex3 ex4 ex6 ex7 ex9_3 ex9_4
+FILES = test_time Ex1 ex3 ex4 ex6 ex7 ex9_3 ex9_4
 
 
 # call "make" -> Compile all OR make ex1 etc.
