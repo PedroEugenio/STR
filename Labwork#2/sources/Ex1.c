@@ -12,7 +12,7 @@ struct Coord{
 
 int count_points = 0; //Global variable acessible in all functions
 
-void read_file(struct Coord *coord, FILE *fptr);
+void read_file(struct Coord *coord, FILE *fptr, int file);
 void calc_average(struct Coord *coord,float *average);
 void calc_min(struct Coord *coord, float *min);
 void calc_max(struct Coord *coord, float *min);
@@ -20,7 +20,9 @@ void  calc_std(struct Coord *coord, float *average, float *s);
 
 
 int main(){
-    struct Coord coord[NUM_POINTS];   
+    struct Coord coord1[NUM_POINTS]; //file 1
+    struct Coord coord2[NUM_POINTS]; //file 2
+    struct Coord coord3[NUM_POINTS]; //file 3  
     FILE *fptr;
     float average[3];
     float min[3];
@@ -28,20 +30,20 @@ int main(){
     float s[3]; //standard deviation
 
     fptr = (FILE *)malloc(sizeof(FILE));
-    read_file(coord, fptr);
+    read_file(coord1, fptr, 1);
     free(fptr);
     printf("Number of points: %i\n",count_points);
 
-    calc_average(coord, average);
+    calc_average(coord1, average);
     printf("Average Value :: x:%.4f y:%.4f z:%.4f\n", average[0], average[1], average[2]);
 
-    calc_min(coord, min);
+    calc_min(coord1, min);
     printf("Minimum Value :: x:%.4f y:%.4f z:%.4f \n", min[0], min[1], min[2]);
 
-    calc_max(coord, max);
+    calc_max(coord1, max);
     printf("Maximum Value :: x:%.4f y:%.4f z:%.4f \n", max[0], max[1], max[2]);
 
-    calc_std(coord, average, s);
+    calc_std(coord1, average, s);
     printf("Standard Deviation Value :: x:%.4f y:%.4f z:%.4f \n", s[0], s[1], s[2]);
 
     
@@ -51,12 +53,18 @@ int main(){
 /*******************************************************************************
 *
 * Objective: Read file from directory and save data into a structure array
-* Issues:
-*
+* Notes:
+* int file - number of the file required
 *******************************************************************************/
-void read_file(struct Coord *coord, FILE *fptr){
+void read_file(struct Coord *coord, FILE *fptr, int file){
+//
+    if(file==1)
+        fptr = fopen("../resources/point_cloud1.txt","r");  // Open the file 1
+    if(file==2)
+        fptr = fopen("../resources/point_cloud2.txt","r");  // Open the file 2
+    if(file==3)
+        fptr = fopen("../resources/point_cloud3.txt","r");  // Open the file 3
 
-    fptr = fopen("../resources/point_cloud1.txt","r");  // Open the file
     if(fptr == NULL){
         perror("fopen()");
         exit(1);
