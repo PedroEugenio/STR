@@ -16,7 +16,7 @@ void read_file(struct Coord *coord, FILE *fptr, int file);
 void calc_average(struct Coord *coord,float *average);
 void calc_min(struct Coord *coord, float *min);
 void calc_max(struct Coord *coord, float *min);
-void  calc_std(struct Coord *coord, float *average, float *s); 
+void calc_std(struct Coord *coord, float *average, float *s); 
 
 
 int main(){
@@ -141,7 +141,7 @@ void calc_average(struct Coord *coord, float *average) {
     }
 /*******************************************************************************
 *
-* Objective:
+* Objective: Calculate Standard Deviation
 * Issues:
 *
 *******************************************************************************/
