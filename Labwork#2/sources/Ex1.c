@@ -11,12 +11,14 @@ struct Coord{
 };
 
 int count_points = 0; //Global variable acessible in all functions
+int count_filtered_points = 0;
 
 void read_file(struct Coord *coord, FILE *fptr, int file);
 void calc_average(struct Coord *coord,float *average);
 void calc_min(struct Coord *coord, float *min);
 void calc_max(struct Coord *coord, float *min);
 void calc_std(struct Coord *coord, float *average, float *s); 
+struct Coord x_negative_filter(struct Coord *coord);
 
 
 int main(){
@@ -28,6 +30,8 @@ int main(){
     float min[3];
     float max[3];
     float s[3]; //standard deviation
+
+    struct Coord filter;
 
     fptr = (FILE *)malloc(sizeof(FILE));
     read_file(coord1, fptr, 1);
@@ -46,6 +50,9 @@ int main(){
     calc_std(coord1, average, s);
     printf("Standard Deviation Value :: x:%.4f y:%.4f z:%.4f \n", s[0], s[1], s[2]);
 
+    printf("========================================================\n");
+    filter = x_negative_filter(coord1);
+    printf("After filtering: number of points = %i", count_filtered_points);
     
     return 0;
 }
@@ -58,13 +65,18 @@ int main(){
 *******************************************************************************/
 void read_file(struct Coord *coord, FILE *fptr, int file){
 //
-    if(file==1)
+    if(file==1){
         fptr = fopen("../resources/point_cloud1.txt","r");  // Open the file 1
-    if(file==2)
+        printf("File point_cloud1 open\n");
+    }
+    if(file==2){
         fptr = fopen("../resources/point_cloud2.txt","r");  // Open the file 2
-    if(file==3)
+        printf("File point_cloud2 open\n");
+    }
+    if(file==3){
         fptr = fopen("../resources/point_cloud3.txt","r");  // Open the file 3
-
+        printf("File point_cloud3 open\n");
+    }
     if(fptr == NULL){
         perror("fopen()");
         exit(1);
@@ -145,7 +157,7 @@ void calc_average(struct Coord *coord, float *average) {
 * Issues:
 *
 *******************************************************************************/
-void  calc_std(struct Coord *coord, float *average, float *s) {
+void calc_std(struct Coord *coord, float *average, float *s) {
 
     for(int i = 0; i < count_points; i++){ 
         s[0] += pow(coord[i].x - average[0],2);
@@ -156,4 +168,25 @@ void  calc_std(struct Coord *coord, float *average, float *s) {
     s[0] = sqrt(s[0]/count_points);
     s[1] = sqrt(s[1]/count_points);
     s[2] = sqrt(s[2]/count_points);
+}
+
+/*******************************************************************************
+*
+* Objective: Filter negative values of x
+* Issues:
+*
+*******************************************************************************/
+struct Coord x_negative_filter(struct Coord *coord){
+    struct Coord temp[count_points];
+
+    for(int i = 1; i < count_points; i++){ 
+        if(coord[i].x>=0){
+            temp[i].x = coord[i].x;
+            temp[i].y = coord[i].y;
+            temp[i].z = coord[i].z;
+            count_filtered_points++;
+        }
+    }
+
+    return *temp;
 }
