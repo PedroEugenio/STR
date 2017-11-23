@@ -3,7 +3,7 @@
 #include <math.h>
 
 #define NUM_POINTS 20000
-#define NUMBER_FILE 3
+#define NUMBER_FILE 1
 
 struct Coord{
     float x;
@@ -20,7 +20,7 @@ void calc_average(struct Coord *coord,float *average);
 void calc_min(struct Coord *coord, float *min);
 void calc_max(struct Coord *coord, float *min);
 void calc_std(struct Coord *coord, float *average, float *s); 
-struct Coord x_negative_filter(struct Coord *coord);
+void x_negative_filter(struct Coord *coord, struct Coord *temp);
 
 
 
@@ -35,7 +35,7 @@ int main(){
     float max[3];
     float s[3]; //standard deviation
 
-    struct Coord filter;
+    struct Coord filter[NUM_POINTS];
 
     readfile = (FILE *)malloc(sizeof(FILE));
     read_file(coord1, readfile, NUMBER_FILE);
@@ -55,11 +55,22 @@ int main(){
     printf("Standard Deviation Value :: x:%.4f y:%.4f z:%.4f \n", s[0], s[1], s[2]);
 
     printf("========================================================\n");
-    filter = x_negative_filter(coord1);
+    x_negative_filter(coord1, filter);
     printf("After filtering: number of points = %i\n", count_filtered_points);
+    calc_average(filter, average);
+    printf("Average Value :: x:%.4f y:%.4f z:%.4f\n", average[0], average[1], average[2]);
+
+    calc_min(filter, min);
+    printf("Minimum Value :: x:%.4f y:%.4f z:%.4f \n", min[0], min[1], min[2]);
+
+    calc_max(filter, max);
+    printf("Maximum Value :: x:%.4f y:%.4f z:%.4f \n", max[0], max[1], max[2]);
+
+    calc_std(filter, average, s);
+    printf("Standard Deviation Value :: x:%.4f y:%.4f z:%.4f \n", s[0], s[1], s[2]);
 
     writefile = (FILE *)malloc(sizeof(FILE));
-    write_file(&filter, writefile, NUMBER_FILE);
+    write_file(filter, writefile, NUMBER_FILE);
     free(writefile);
     return 0;
 }
@@ -143,7 +154,7 @@ void calc_min(struct Coord *coord, float *min) {
     min[0] = coord[0].x;
     min[1] = coord[0].y;
     min[2] = coord[0].z;
-    for(int i = 1; i < count_points; i++){ 
+    for(int i = 0; i < count_points; i++){ 
         if(coord[i].x<min[0])
             min[0] = coord[i].x;
         if(coord[i].y<min[1])   
@@ -162,7 +173,7 @@ void calc_max(struct Coord *coord, float *max) {
     max[0] = coord[0].x;
     max[1] = coord[0].y;
     max[2] = coord[0].z;
-    for(int i = 1; i < count_points; i++){ 
+    for(int i = 0; i < count_points; i++){ 
         if(coord[i].x>max[0])
             max[0] = coord[i].x;
         if(coord[i].y>max[1])   
@@ -215,17 +226,15 @@ void calc_std(struct Coord *coord, float *average, float *s) {
 * Issues:
 *
 *******************************************************************************/
-struct Coord x_negative_filter(struct Coord *coord){
-    struct Coord temp[count_points];
+void x_negative_filter(struct Coord *coord, struct Coord *temp){
 
-    for(int i = 1; i < count_points; i++){ 
-        if(coord[i].x>=0){
-            temp[i].x = coord[i].x;
-            temp[i].y = coord[i].y;
-            temp[i].z = coord[i].z;
+    for(int i = 0; i < count_points; i++){ 
+        if(coord[i].x>0){
+            temp[count_filtered_points].x = coord[i].x;
+            temp[count_filtered_points].y = coord[i].y;
+            temp[count_filtered_points].z = coord[i].z;
             count_filtered_points++;
         }
     }
 
-    return *temp;
 }
