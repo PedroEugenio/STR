@@ -3,6 +3,7 @@
 #include <math.h>
 
 #define NUM_POINTS 20000
+#define NUMBER_FILE 3
 
 struct Coord{
     float x;
@@ -14,6 +15,7 @@ int count_points = 0; //Global variable acessible in all functions
 int count_filtered_points = 0;
 
 void read_file(struct Coord *coord, FILE *fptr, int file);
+void write_file(struct Coord *coord, FILE *fptr, int file);
 void calc_average(struct Coord *coord,float *average);
 void calc_min(struct Coord *coord, float *min);
 void calc_max(struct Coord *coord, float *min);
@@ -21,11 +23,13 @@ void calc_std(struct Coord *coord, float *average, float *s);
 struct Coord x_negative_filter(struct Coord *coord);
 
 
+
 int main(){
     struct Coord coord1[NUM_POINTS]; //file 1
     struct Coord coord2[NUM_POINTS]; //file 2
     struct Coord coord3[NUM_POINTS]; //file 3  
-    FILE *fptr;
+    FILE *readfile;
+    FILE *writefile;
     float average[3];
     float min[3];
     float max[3];
@@ -33,9 +37,9 @@ int main(){
 
     struct Coord filter;
 
-    fptr = (FILE *)malloc(sizeof(FILE));
-    read_file(coord1, fptr, 1);
-    free(fptr);
+    readfile = (FILE *)malloc(sizeof(FILE));
+    read_file(coord1, readfile, NUMBER_FILE);
+    free(readfile);
     printf("Number of points: %i\n",count_points);
 
     calc_average(coord1, average);
@@ -52,8 +56,11 @@ int main(){
 
     printf("========================================================\n");
     filter = x_negative_filter(coord1);
-    printf("After filtering: number of points = %i", count_filtered_points);
-    
+    printf("After filtering: number of points = %i\n", count_filtered_points);
+
+    writefile = (FILE *)malloc(sizeof(FILE));
+    write_file(&filter, writefile, NUMBER_FILE);
+    free(writefile);
     return 0;
 }
 
@@ -64,7 +71,6 @@ int main(){
 * int file - number of the file required
 *******************************************************************************/
 void read_file(struct Coord *coord, FILE *fptr, int file){
-//
     if(file==1){
         fptr = fopen("../resources/point_cloud1.txt","r");  // Open the file 1
         printf("File point_cloud1 open\n");
@@ -94,6 +100,39 @@ void read_file(struct Coord *coord, FILE *fptr, int file){
     fclose(fptr);
 }
 
+/*******************************************************************************
+*
+* Objective: Save filtered data into a new file
+* Notes:
+* int file - number of the file
+*******************************************************************************/
+void write_file(struct Coord *coord, FILE *fptr, int file){
+    if(file==1){
+        fptr = fopen("../resources/point_cloud1_filtered.txt","w");  // Open the file 1
+        printf("File point_cloud1 open\n");
+    }
+    if(file==2){
+        fptr = fopen("../resources/point_cloud2_filtered.txt","w");  // Open the file 2
+        printf("File point_cloud2 open\n");
+    }
+    if(file==3){
+        fptr = fopen("../resources/point_cloud3_filtered.txt","w");  // Open the file 3
+        printf("File point_cloud3 open\n");
+    }
+    if(fptr == NULL){
+        perror("fopen()");
+        exit(1);
+    }
+
+    // Verify if the document reached to an end
+    for(int i=0; i<count_filtered_points; i++){ 
+        // Saves the values from .txt file to the variables
+        fprintf(fptr, "%f %f %f\n", coord[i].x, coord[i].y, coord[i].z);
+
+    }
+    
+    fclose(fptr);
+}
 /*******************************************************************************
 *
 * Objective: Calculate minimum value of a point cloud
