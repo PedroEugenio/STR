@@ -21,7 +21,7 @@ void calc_min(struct Coord *coord, float *min);
 void calc_max(struct Coord *coord, float *min);
 void calc_std(struct Coord *coord, float *average, float *s); 
 void x_negative_filter(struct Coord *coord, struct Coord *temp);
-
+void denoise(struct Coord *coord, float *s);
 
 
 int main(){
@@ -57,6 +57,23 @@ int main(){
     printf("========================================================\n");
     x_negative_filter(coord1, filter);
     printf("After filtering: number of points = %i\n", count_filtered_points);
+    calc_average(filter, average);
+    printf("Average Value :: x:%.4f y:%.4f z:%.4f\n", average[0], average[1], average[2]);
+
+    calc_min(filter, min);
+    printf("Minimum Value :: x:%.4f y:%.4f z:%.4f \n", min[0], min[1], min[2]);
+
+    calc_max(filter, max);
+    printf("Maximum Value :: x:%.4f y:%.4f z:%.4f \n", max[0], max[1], max[2]);
+
+    calc_std(filter, average, s);
+    printf("Standard Deviation Value :: x:%.4f y:%.4f z:%.4f \n", s[0], s[1], s[2]);
+
+    
+
+    printf("========================================================\n");
+    denoise(filter, s);
+    printf("STD filtering: number of points = %i\n", count_filtered_points);
     calc_average(filter, average);
     printf("Average Value :: x:%.4f y:%.4f z:%.4f\n", average[0], average[1], average[2]);
 
@@ -237,4 +254,33 @@ void x_negative_filter(struct Coord *coord, struct Coord *temp){
         }
     }
 
+}
+
+/*******************************************************************************
+*
+* Objective: Denoise point cloud
+* Issues:
+*
+*******************************************************************************/
+void denoise(struct Coord *coord, float *s){
+   int temp=0;
+   for(int i = 0; i < count_filtered_points; i++){ 
+        if(coord[i].x<s[0] && abs(coord[i].y)<s[1] && coord[i].z<s[1]){
+            coord[temp].x = coord[i].x;
+            coord[temp].y = coord[i].y;
+            coord[temp].z = coord[i].z;
+            temp++;
+        }
+    }
+    count_filtered_points=temp;
+}
+
+/*******************************************************************************
+*
+* Objective: Detect ramps
+* Issues: Not implemented. Claculate derivative of Z
+*
+*******************************************************************************/
+void ramps(struct Coord *coord){
+    
 }
