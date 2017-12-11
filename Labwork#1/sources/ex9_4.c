@@ -78,7 +78,7 @@ int main() {
   CPU_ZERO(&mask);
   CPU_SET(0, &mask);
 
-  /* sets the affinity of the current process to that core */ // O Luís não têm!
+  /* sets the affinity of the current process to that core */
   if( sched_setaffinity(0, sizeof(cpu_set_t), &mask) == -1 )
     errorExit("main->sched_setaffinity");
 
