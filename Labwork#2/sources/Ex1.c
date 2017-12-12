@@ -7,13 +7,19 @@
  *  Part I
  *
  ************************************************************************/
-#include <stdlib.h>
+#define _GNU_SOURCE
+
 #include <stdio.h>
-#include <math.h>
+#include <stdlib.h>
+#include <stdint.h> // int_8 int_32 etc
 #include <time.h>
+#include <math.h>
 #include <errno.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <sys/mman.h>
+#include <string.h> // ??
+#include <sys/types.h>
 #include <sched.h>
 
 /* MAX number of Points that our program can read */
@@ -60,25 +66,27 @@ struct timespec response_time[NUM_FILES] = {{0,0}, {0,0}, {0,0}};
 #endif
 
 /* Global declaration */
-void* task1(struct PointCloud temp);
-void* task2(struct PointCloud temp);
-void* task3(struct PointCloud temp);
+void* task1(struct PointCloud *temp);
+void* task2(struct PointCloud *temp);
+void* task3(struct PointCloud *temp);
 
-void execute_math(struct PointCloud temp);
-
+void execute_math(struct PointCloud *temp);
 //void response_time();
-void read_file(struct PointCloud temp, FILE *fptr, int file);
-void write_file(struct PointCloud temp, FILE *fptr, int file);
 
-void calc_average(struct PointCloud temp);
-void calc_min(struct PointCloud temp);
-void calc_max(struct PointCloud temp);
-void calc_std(struct PointCloud temp);
+void read_file(struct PointCloud *temp, FILE *fptr, int file);
+void write_file(struct PointCloud *temp, FILE *fptr, int file);
 
-void x_negative_filter(struct PointCloud temp);
-void denoise(struct PointCloud temp);
-void ramps(struct pointCloud temp);
+void calc_average(struct PointCloud *temp);
+void calc_min(struct PointCloud *temp);
+void calc_max(struct PointCloud *temp);
+void calc_std(struct PointCloud *temp);
 
+void x_negative_filter(struct PointCloud *temp);
+void denoise(struct PointCloud *temp);
+void ramps(struct PointCloud *temp);
+
+// TESTING
+int NUMBER_FILE = 1;
 
 int main(){
   printf("\n\nPart I - Threads & Semaphores\n\n");
@@ -86,7 +94,7 @@ int main(){
   /* For each file to read, calculate and write */
   // Isto não muito dinâmico, deviamos passar o nome ficheiro com queremos trabalhar
   // até está na alinea 1
-  for (int NUMBER_FILE = 1; NUMBER_FILE <= NUM_FILES; NUMBER_FILE++) {
+  //for (int NUMBER_FILE = 1; NUMBER_FILE <= NUM_FILES; NUMBER_FILE++) {
 
     struct PointCloud pointCloud; // original file
     //struct Coord filter[NUM_POINTS]; // filtered file
@@ -144,25 +152,31 @@ int main(){
     }
 
     /* Create threads for all tasks - Filters */
-    if(pthread_create(&(thread[0]), &(attr[0]), task1(pointCloud), NULL) < 0)
-    errorExit("main->pthread_create");
+    // if(pthread_create(&(thread[0]), &(attr[0]), task1(&pointCloud), NULL) < 0)
+    //   errorExit("main->pthread_create");
+    //
+    // if(pthread_create(&(thread[1]), &(attr[1]), task2(&pointCloud), NULL) < 0)
+    //   errorExit("main->pthread_create");
+    //
+    // if(pthread_create(&(thread[2]), &(attr[2]), task3(&pointCloud), NULL) < 0)
+    //   errorExit("main->pthread_create");
 
-    if(pthread_create(&(thread[1]), &(attr[1]), task2(pointCloud), NULL) < 0)
-    errorExit("main->pthread_create");
+    // Só para testar: vou chamar aqui as tasks
+    task1(&pointCloud);
+    task2(&pointCloud);
+    task3(&pointCloud);
 
-    if(pthread_create(&(thread[2]), &(attr[2]), task3(pointCloud), NULL) < 0)
-    errorExit("main->pthread_create");
 
 
     /* Final results... for each task */
     do {
       printf("\n\nWaiting...\n\n");
       /* Main thread go to sleep when wake up it will cancel tasks threads */
-      sleep(FINISH);
+      //sleep(FINISH);
 
-      for (int i = 0; i < 3; i++) {
-        pthread_cancel(thread[i]);
-      }
+      // for (int i = 0; i < 3; i++) {
+      //   pthread_cancel(thread[i]);
+      // }
       //printf("Inverse RMPO response times:\n");
       //response_times();
 
@@ -170,7 +184,7 @@ int main(){
     } while(1);
 
 
-  }
+  //}
 }
 /*******************************************************************************
 *
@@ -182,7 +196,7 @@ int main(){
 * Issues:
 *
 *******************************************************************************/
-void* task1(struct PointCloud temp) {
+void* task1(struct PointCloud *temp) {
 
   FILE *readfile;
 
@@ -193,25 +207,25 @@ void* task1(struct PointCloud temp) {
   read_file(temp, readfile, POINTCLOUD1);
   free(readfile);
 
-  printf("Number of points: %i\n", temp.count_points);
+  printf("Number of points: %i\n", temp->count_points);
 
   calc_average(temp);
-  printf("Average Value :: x:%.4f y:%.4f z:%.4f\n", temp.average[0], temp.average[1],temp.average[2]);
+  printf("Average Value :: x:%.4f y:%.4f z:%.4f\n", temp->average[0], temp->average[1],temp->average[2]);
 
   calc_min(temp);
-  printf("Minimum Value :: x:%.4f y:%.4f z:%.4f \n", temp.min[0], temp.min[1], temp.min[2]);
+  printf("Minimum Value :: x:%.4f y:%.4f z:%.4f \n", temp->min[0], temp->min[1], temp->min[2]);
 
   calc_max(temp);
-  printf("Maximum Value :: x:%.4f y:%.4f z:%.4f \n", temp.max[0], temp.max[1], temp.max[2]);
+  printf("Maximum Value :: x:%.4f y:%.4f z:%.4f \n", temp->max[0], temp->max[1], temp->max[2]);
 
   calc_std(temp);
-  printf("Standard Deviation Value :: x:%.4f y:%.4f z:%.4f \n", temp.std[0], temp.std[1], temp.std[2]);
+  printf("Standard Deviation Value :: x:%.4f y:%.4f z:%.4f \n", temp->std[0], temp->std[1], temp->std[2]);
 
   //execute_math(temp);
 
   /* Counters points Reset */
-  temp.count_points = 0;
-  temp.count_filtered_points = 0;
+  // temp->count_points = 0;
+  // temp->count_filtered_points = 0;
 
   // AQUI DEVE FECHAR O SEMAPHORE
 }
@@ -226,7 +240,7 @@ void* task1(struct PointCloud temp) {
 * Issues:   Not implemented points that clearly do not correspond to ground
 *
 *******************************************************************************/
-void* task2(struct pointCloud temp) { // struct Coord coord
+void* task2(struct PointCloud *temp) { // struct Coord coord
 
   /* Removing axis X negative Points */
   // for(int i = 0; i < count_points; i++){
@@ -238,10 +252,12 @@ void* task2(struct pointCloud temp) { // struct Coord coord
   //     }
   // } // Podemos passar para aqui a função ? o.O (se não precisamos de calcular a math sempre)
 
-  x_negative_filter(temp)
+  x_negative_filter(temp);
 
   /* Clusters were removed above too */
 
+  /* Counters points Reset */
+  //temp->count_points = temp->count_filtered_points;
 
   //printf("After filtering...\n\n");
   //execute_math(count_filtered_points);
@@ -255,7 +271,7 @@ void* task2(struct pointCloud temp) { // struct Coord coord
 * Issues: Not implemented. I put here 2.3) discard the Outliers
 *
 *******************************************************************************/
-void* task3(struct pointCloud temp) { // struct Coord coord
+void* task3(struct PointCloud *temp) { // struct Coord coord
 
   FILE *writefile;
 
@@ -277,23 +293,23 @@ void* task3(struct pointCloud temp) { // struct Coord coord
 * Issues:
 *
 *******************************************************************************/
-void execute_math(struct pointCloud temp) {
+void execute_math(struct PointCloud *temp) {
 
   printf("========================================================\n");
 
-  printf("Number of points: %i\n", temp.number_points);
+  printf("Number of points: %i\n", temp->count_points);
 
   calc_average(temp);
-  printf("Average Value :: x:%.4f y:%.4f z:%.4f\n", temp.average[0], temp.average[1], temp.average[2]);
+  printf("Average Value :: x:%.4f y:%.4f z:%.4f\n", temp->average[0], temp->average[1], temp->average[2]);
 
   calc_min(temp);
-  printf("Minimum Value :: x:%.4f y:%.4f z:%.4f \n", temp.min[0], temp.min[1], temp.min[2]);
+  printf("Minimum Value :: x:%.4f y:%.4f z:%.4f \n", temp->min[0], temp->min[1], temp->min[2]);
 
   calc_max(temp);
-  printf("Maximum Value :: x:%.4f y:%.4f z:%.4f \n", temp.max[0], temp.max[1], temp.max[2]);
+  printf("Maximum Value :: x:%.4f y:%.4f z:%.4f \n", temp->max[0], temp->max[1], temp->max[2]);
 
   calc_std(temp);
-  printf("Standard Deviation Value :: x:%.4f y:%.4f z:%.4f \n", temp.std[0], temp.std[1], temp.std[2]);
+  printf("Standard Deviation Value :: x:%.4f y:%.4f z:%.4f \n", temp->std[0], temp->std[1], temp->std[2]);
 
 }
 /*******************************************************************************
@@ -319,7 +335,7 @@ void execute_math(struct pointCloud temp) {
 * Notes: int file - number of the file required
 *
 *******************************************************************************/
-void read_file(struct pointCloud temp, FILE *fptr, int file){ // mudar o int file para uma string
+void read_file(struct PointCloud *temp, FILE *fptr, int file){ // mudar o int file para uma string
     if(file==1){
         fptr = fopen("../resources/point_cloud1.txt","r");  // Open the file 1
         printf("\nReading point_cloud1.txt\n\n");
@@ -340,11 +356,16 @@ void read_file(struct pointCloud temp, FILE *fptr, int file){ // mudar o int fil
     // Verify if the document reached to an end
     while( !feof (fptr) ){
         // Saves the values from .txt file to the variables
-        fscanf(fptr, "%f %f %f", temp.x[count_points], temp.y[count_points], temp.z[count_points] );
-        //printf("%.4f %.4f %.4f \n", coord[count_points].x, coord[count_points].y, coord[count_points].z);
-        temp.count_points++;  // last line of coord is all 0
+        float _x = 0.0, _y = 0.0, _z = 0.0;
+        fscanf(fptr, "%f %f %f", &_x, &_y, &_z);
+
+        temp->x[temp->count_points] = _x;
+        temp->y[temp->count_points] = _y;
+        temp->z[temp->count_points] = _z;
+
+        temp->count_points++;  // last line of coord is all 0
     }
-    temp.count_points-=1;
+    temp->count_points-=1;
 
     fclose(fptr);
 }
@@ -355,7 +376,7 @@ void read_file(struct pointCloud temp, FILE *fptr, int file){ // mudar o int fil
 * Notes:
 * int file - number of the file
 *******************************************************************************/
-void write_file(struct pointCloud temp, FILE *fptr, int file){
+void write_file(struct PointCloud *temp, FILE *fptr, int file){
 
     if(file==1){
         fptr = fopen("../resources/point_cloud1_filtered.txt","w");  // Open the file 1
@@ -375,9 +396,9 @@ void write_file(struct pointCloud temp, FILE *fptr, int file){
     }
 
     // Verify if the document reached to an end
-    for(int i = 0; i < temp.count_filtered_points; i++){
+    for(int i = 0; i < temp->count_filtered_points; i++){
         // Saves the values from .txt file to the variables
-        fprintf(fptr, "%f %f %f\n", temp.x[i], temp.y[i], temp.z[i]);
+        fprintf(fptr, "%f %f %f\n", temp->x[i], temp->y[i], temp->z[i]);
 
     }
 
@@ -389,22 +410,22 @@ void write_file(struct pointCloud temp, FILE *fptr, int file){
 * Issues:
 *
 *******************************************************************************/
-void calc_min(struct pointCloud temp) {
+void calc_min(struct PointCloud *temp) {
 
-  temp.min[0] = temp.x[0];
-  temp.min[1] = temp.y[0];
-  temp.min[2] = temp.z[0];
+  temp->min[0] = temp->x[0];
+  temp->min[1] = temp->y[0];
+  temp->min[2] = temp->z[0];
 
-  for(int i = 0; i < temp.count_points; i++){
+  for(int i = 0; i < temp->count_points; i++){
 
-    if(temp[i].x < temp.min[0])
-      temp.min[0] = temp.x[i];
+    if(temp->x[i] < temp->min[0])
+      temp->min[0] = temp->x[i];
 
-    if(temp[i].y < temp.min[1])
-      temp.min[1] = temp.y[i];
+    if(temp->y[i] < temp->min[1])
+      temp->min[1] = temp->y[i];
 
-    if(temp[i].z < temp.min[2])
-      temp.min[2] = temp.z[i];
+    if(temp->z[i] < temp->min[2])
+      temp->min[2] = temp->z[i];
   }
 }
 /*******************************************************************************
@@ -413,22 +434,22 @@ void calc_min(struct pointCloud temp) {
 * Issues:
 *
 *******************************************************************************/
-void calc_max(struct pointCloud temp) {
+void calc_max(struct PointCloud *temp) {
 
-  temp.max[0] = temp.x[0];
-  temp.max[1] = temp.y[0];
-  temp.max[2] = temp.z[0];
+  temp->max[0] = temp->x[0];
+  temp->max[1] = temp->y[0];
+  temp->max[2] = temp->z[0];
 
-  for(int i = 0; i < temp.count_points; i++){
+  for(int i = 0; i < temp->count_points; i++){
 
-    if(temp.x[i] > temp.max[0])
-      temp.max[0] = temp.x[i];
+    if(temp->x[i] > temp->max[0])
+      temp->max[0] = temp->x[i];
 
-    if(temp.y[i] > temp.max[1])
-      temp.max[1] = temp.y[i];
+    if(temp->y[i] > temp->max[1])
+      temp->max[1] = temp->y[i];
 
-    if(temp.z[i] > temp.max[2])
-      temp.max[2] = temp.z[i];
+    if(temp->z[i] > temp->max[2])
+      temp->max[2] = temp->z[i];
   }
 }
 /*******************************************************************************
@@ -437,19 +458,19 @@ void calc_max(struct pointCloud temp) {
 * Issues:
 *
 *******************************************************************************/
-void calc_average(struct pointCloud temp) {
+void calc_average(struct PointCloud *temp) {
 
-  for(int i = 0; i < temp.count_points; i++){
+  for(int i = 0; i < temp->count_points; i++){
 
-    temp.average[0] += temp.x[i];
-    temp.average[1] += temp.y[i];
-    temp.average[2] += temp.z[i];
+    temp->average[0] += temp->x[i];
+    temp->average[1] += temp->y[i];
+    temp->average[2] += temp->z[i];
 
   }
 
-  temp.average[0] /= temp.count_points;
-  temp.average[1] /= temp.count_points;
-  temp.average[2] /= temp.count_points;
+  temp->average[0] /= temp->count_points;
+  temp->average[1] /= temp->count_points;
+  temp->average[2] /= temp->count_points;
 }
 /*******************************************************************************
 *
@@ -457,19 +478,19 @@ void calc_average(struct pointCloud temp) {
 * Issues:
 *
 *******************************************************************************/
-void calc_std(struct pointCloud temp) {
+void calc_std(struct PointCloud *temp) {
 
-  for(int i = 0; i < number_points; i++){
+  for(int i = 0; i < temp->count_points; i++){
 
-    temp.std[0] += pow(temp.x[i] - temp.average[0], 2);
-    temp.std[1] += pow(temp.y[i] - temp.average[1], 2);
-    temp.std[2] += pow(temo.z[i] - temp.average[2], 2);
+    temp->std[0] += pow(temp->x[i] - temp->average[0], 2);
+    temp->std[1] += pow(temp->y[i] - temp->average[1], 2);
+    temp->std[2] += pow(temp->z[i] - temp->average[2], 2);
 
   }
 
-  temp.std[0] = sqrt(temp.std[0]/temp.count_points);
-  temp.std[1] = sqrt(temp.std[1]/temp.count_points);
-  temp.std[2] = sqrt(temp.std[2]/temp.count_points);
+  temp->std[0] = sqrt(temp->std[0]/temp->count_points);
+  temp->std[1] = sqrt(temp->std[1]/temp->count_points);
+  temp->std[2] = sqrt(temp->std[2]/temp->count_points);
 }
 /*******************************************************************************
 *
@@ -477,19 +498,22 @@ void calc_std(struct pointCloud temp) {
 * Issues:
 *
 *******************************************************************************/
-void x_negative_filter(struct pointCloud temp){
+void x_negative_filter(struct PointCloud *temp){
 
-  for(int i = 0; i < temp.count_points; i++){
+  int count = 0;
 
-    if(temp.x[i] > 0){
+  for(int i = 0; i < temp->count_points; i++){
 
-      temp.x[temp.count_filtered_points] = temp.x[i];
-      temp.y[temp.count_filtered_points] = temp.y[i];
-      temp.z[temp.count_filtered_points] = temp.z[i];
+    if(temp->x[i] > 0){
 
-      temp.count_filtered_points++;
+      temp->x[count] = temp->x[i];
+      temp->y[count] = temp->y[i];
+      temp->z[count] = temp->z[i];
+
+      count++;
     }
   }
+  temp->count_filtered_points = count;
 }
 /*******************************************************************************
 *
@@ -497,21 +521,21 @@ void x_negative_filter(struct pointCloud temp){
 * Issues:
 *
 *******************************************************************************/
-void denoise(struct pointCloud temp){
+void denoise(struct PointCloud *temp){
 
   int count = 0;
 
-  for(int i = 0; i < temp.count_filtered_points; i++){
+  for(int i = 0; i < temp->count_filtered_points; i++){
 
-    if( temp.x[i] < temp.std && abs(temp.y[i]) < temp.std && abs(temp.z[i]) < temp.std ){
-      temp.x[count] = temp.x[i];
-      temp.y[count] = temp.y[i];
-      temp.z[count] = temp.z[i];
+    if( temp->x[i] < temp->std[0] && abs(temp->y[i]) < temp->std[1] && abs(temp->z[i]) < temp->std[2] ){
+      temp->x[count] = temp->x[i];
+      temp->y[count] = temp->y[i];
+      temp->z[count] = temp->z[i];
       count++;
     }
 
   }
-  temp.count_filtered_points = count;
+  temp->count_filtered_points = count;
 }
 /*******************************************************************************
 *
@@ -519,6 +543,6 @@ void denoise(struct pointCloud temp){
 * Issues: Not implemented. Claculate derivative of Z
 *
 *******************************************************************************/
-void ramps(struct pointCloud temp){
+void ramps(struct PointCloud *temp){
 
 }
