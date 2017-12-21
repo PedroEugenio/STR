@@ -163,14 +163,24 @@ int main(){
     }
     sem_init(&mutex, 0, 1);
     /* Create threads for all tasks - Filters */
-    // if(pthread_create(&(thread[0]), &(attr[0]), task1(&pointCloud), NULL) < 0)
-    //   errorExit("main->pthread_create");
-    //
-    // if(pthread_create(&(thread[1]), &(attr[1]), task2(&pointCloud), NULL) < 0)
-    //   errorExit("main->pthread_create");
-    //
-    // if(pthread_create(&(thread[2]), &(attr[2]), task3(&pointCloud), NULL) < 0)
-    //   errorExit("main->pthread_create");
+    /* if(pthread_create(&(thread[0]), &(attr[0]), task1(&pointCloud), NULL) != 0)
+      errorExit("main->pthread_create");
+    
+    if(pthread_create(&(thread[1]), &(attr[1]), task2(&pointCloud), NULL) != 0)
+      errorExit("main->pthread_create");
+    
+    if(pthread_create(&(thread[2]), &(attr[2]), task3(&pointCloud), NULL) != 0)
+      errorExit("main->pthread_create"); */
+
+    /* Waits for the ending of each thread tasks - Filters */
+    /* if(pthread_join(thread[0],NULL) != 0)
+      errorExit("main->pthread_join");
+    
+    if(pthread_join(thread[1],NULL) != 0)
+      errorExit("main->pthread_join");
+    
+    if(pthread_join(thread[2],NULL) != 0)
+      errorExit("main->pthread_join"); */
 
     // Só para testar: vou chamar aqui as tasks
     clock_gettime(CLOCK_MONOTONIC, &start);
@@ -203,12 +213,11 @@ int main(){
       // }
       //printf("Inverse RMPO response times:\n");
       //response_times();
-
+      sem_destroy(&mutex);
       exit(EXIT_SUCCESS);
     } while(1);
 
-    sem_destroy(&mutex);
-    return 0;
+    
   //}
 }
 /*******************************************************************************
