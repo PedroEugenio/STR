@@ -161,29 +161,30 @@ int main(){
       errorExit("main->pthread_attr_setschedparam");
 
     }
+    
     sem_init(&mutex, 0, 1);
     /* Create threads for all tasks - Filters */
-    /* if(pthread_create(&(thread[0]), &(attr[0]), task1(&pointCloud), NULL) != 0)
+    if(pthread_create(&(thread[0]), &(attr[0]), (void *) task1, (void *) &pointCloud) != 0)
       errorExit("main->pthread_create");
-    
-    if(pthread_create(&(thread[1]), &(attr[1]), task2(&pointCloud), NULL) != 0)
+    printf("Thread 1 Created!! \n");
+    if(pthread_create(&(thread[1]), &(attr[1]), (void *) task2,  (void *) &pointCloud) != 0)
       errorExit("main->pthread_create");
-    
-    if(pthread_create(&(thread[2]), &(attr[2]), task3(&pointCloud), NULL) != 0)
-      errorExit("main->pthread_create"); */
-
+    printf("Thread 2 Created!! \n");
+    if(pthread_create(&(thread[2]), &(attr[2]), (void *) task3,  (void *) &pointCloud) != 0)
+      errorExit("main->pthread_create");
+    printf("Thread 3 Created!! \n");
     /* Waits for the ending of each thread tasks - Filters */
-    /* if(pthread_join(thread[0],NULL) != 0)
+    if(pthread_join(thread[0],NULL) != 0)
       errorExit("main->pthread_join");
     
     if(pthread_join(thread[1],NULL) != 0)
       errorExit("main->pthread_join");
     
     if(pthread_join(thread[2],NULL) != 0)
-      errorExit("main->pthread_join"); */
+      errorExit("main->pthread_join");
 
     // Só para testar: vou chamar aqui as tasks
-    clock_gettime(CLOCK_MONOTONIC, &start);
+    /* clock_gettime(CLOCK_MONOTONIC, &start);
     task1(&pointCloud);
     clock_gettime(CLOCK_MONOTONIC, &end);
     computation_time[0]=time2ms(DIFF(start,end));
@@ -200,7 +201,7 @@ int main(){
 
     for(int i=0; i<NUM_FILES; i++){
       printf("Computation time Task %d: %LF ms \n",i+1,computation_time[i]);
-    }
+    } */
 
     /* Final results... for each task */
     do {
@@ -231,7 +232,7 @@ int main(){
 *
 *******************************************************************************/
 void* task1(struct PointCloud *temp) {
-
+  printf("Task1 \n");
   FILE *readfile;
 
   sem_wait(&mutex);
@@ -275,6 +276,7 @@ void* task1(struct PointCloud *temp) {
 *
 *******************************************************************************/
 void* task2(struct PointCloud *temp) { // struct Coord coord
+  printf("Task2\n");
   sem_wait(&mutex);
   /* Removing axis X negative Points */
   // for(int i = 0; i < count_points; i++){
@@ -287,7 +289,6 @@ void* task2(struct PointCloud *temp) { // struct Coord coord
   // } // Podemos passar para aqui a função ? o.O (se não precisamos de calcular a math sempre)
 
   x_negative_filter(temp);
-
   /* Clusters were removed above too */
 
   /* Counters points Reset */
@@ -306,7 +307,7 @@ void* task2(struct PointCloud *temp) { // struct Coord coord
 *
 *******************************************************************************/
 void* task3(struct PointCloud *temp) { // struct Coord coord
-
+  printf("Task3\n");
   FILE *writefile;
   sem_wait(&mutex);
   /* STD filtering - Removing Noising Points */
