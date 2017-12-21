@@ -21,6 +21,7 @@
 #include <string.h> // ??
 #include <sys/types.h>
 #include <sched.h>
+#include "../resources/timespec.h"
 
 /* MAX number of Points that our program can read */
 #define NUM_POINTS   20000
@@ -59,6 +60,8 @@ pthread_t thread[NUM_FILES];
 
 /* Activation time for each thread */
 struct timespec response_time[NUM_FILES] = {{0,0}, {0,0}, {0,0}};
+
+struct timespec computation_time[NUM_FILES];
 
 /* Error Message */
 #ifndef errorExit
