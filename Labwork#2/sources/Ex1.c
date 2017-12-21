@@ -213,7 +213,7 @@ int main(){
       // }
       //printf("Inverse RMPO response times:\n");
       //response_times();
-      sem_destroy(&mutex);
+      sem_destroy(&mutex); // destroy mutex before ending the program
       exit(EXIT_SUCCESS);
     } while(1);
 
