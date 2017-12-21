@@ -21,6 +21,7 @@
 #include <string.h> // ??
 #include <sys/types.h>
 #include <sched.h>
+#include <semaphore.h>
 #include "../resources/timespec.h"
 
 /* MAX number of Points that our program can read */
@@ -61,7 +62,8 @@ pthread_t thread[NUM_FILES];
 /* Activation time for each thread */
 struct timespec response_time[NUM_FILES] = {{0,0}, {0,0}, {0,0}};
 
-struct timespec computation_time[NUM_FILES];
+/* Computation time for each task */
+float computation_time[NUM_FILES];
 
 /* Error Message */
 #ifndef errorExit
@@ -91,7 +93,13 @@ void ramps(struct PointCloud *temp);
 // TESTING
 int NUMBER_FILE = 1;
 
+sem_t mutex;
+
 int main(){
+
+  struct timespec start; 
+  struct timespec end;
+
   printf("\n\nPart I - Threads & Semaphores\n\n");
 
   /* For each file to read, calculate and write */
@@ -111,7 +119,7 @@ int main(){
 
     /* Lock all of the calling process's virtual address space into RAM  Note: requires "sudo" to lock the memory. */
     if( mlockall(MCL_CURRENT | MCL_FUTURE) == -1 )
-    errorExit("main->mloackall");
+    errorExit("main->mlockall");
 
     cpu_set_t mask;
     pthread_attr_t attr[3];
@@ -123,7 +131,7 @@ int main(){
 
 
     /* One thread for each task: */
-    for (int i = 1; i <= 3; i++) {
+    for (int i = 0; i < NUM_FILES; i++) {
 
       /* Parameters of threads */
       if( pthread_attr_init(&(attr[i])) != 0 )
@@ -153,23 +161,47 @@ int main(){
       errorExit("main->pthread_attr_setschedparam");
 
     }
-
+    
+    sem_init(&mutex, 0, 1);
     /* Create threads for all tasks - Filters */
-    // if(pthread_create(&(thread[0]), &(attr[0]), task1(&pointCloud), NULL) < 0)
-    //   errorExit("main->pthread_create");
-    //
-    // if(pthread_create(&(thread[1]), &(attr[1]), task2(&pointCloud), NULL) < 0)
-    //   errorExit("main->pthread_create");
-    //
-    // if(pthread_create(&(thread[2]), &(attr[2]), task3(&pointCloud), NULL) < 0)
-    //   errorExit("main->pthread_create");
+    if(pthread_create(&(thread[0]), &(attr[0]), (void *) task1, (void *) &pointCloud) != 0)
+      errorExit("main->pthread_create");
+    printf("Thread 1 Created!! \n");
+    if(pthread_create(&(thread[1]), &(attr[1]), (void *) task2,  (void *) &pointCloud) != 0)
+      errorExit("main->pthread_create");
+    printf("Thread 2 Created!! \n");
+    if(pthread_create(&(thread[2]), &(attr[2]), (void *) task3,  (void *) &pointCloud) != 0)
+      errorExit("main->pthread_create");
+    printf("Thread 3 Created!! \n");
+    /* Waits for the ending of each thread tasks - Filters */
+    if(pthread_join(thread[0],NULL) != 0)
+      errorExit("main->pthread_join");
+    
+    if(pthread_join(thread[1],NULL) != 0)
+      errorExit("main->pthread_join");
+    
+    if(pthread_join(thread[2],NULL) != 0)
+      errorExit("main->pthread_join");
 
     // Só para testar: vou chamar aqui as tasks
+    /* clock_gettime(CLOCK_MONOTONIC, &start);
     task1(&pointCloud);
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    computation_time[0]=time2ms(DIFF(start,end));
+
+    clock_gettime(CLOCK_MONOTONIC, &start);
     task2(&pointCloud);
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    computation_time[1]=time2ms(DIFF(start,end));
+
+    clock_gettime(CLOCK_MONOTONIC, &start);
     task3(&pointCloud);
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    computation_time[2]=time2ms(DIFF(start,end));
 
-
+    for(int i=0; i<NUM_FILES; i++){
+      printf("Computation time Task %d: %LF ms \n",i+1,computation_time[i]);
+    } */
 
     /* Final results... for each task */
     do {
@@ -182,11 +214,11 @@ int main(){
       // }
       //printf("Inverse RMPO response times:\n");
       //response_times();
-
+      sem_destroy(&mutex); // destroy mutex before ending the program
       exit(EXIT_SUCCESS);
     } while(1);
 
-
+    
   //}
 }
 /*******************************************************************************
@@ -200,10 +232,10 @@ int main(){
 *
 *******************************************************************************/
 void* task1(struct PointCloud *temp) {
-
+  printf("Task1 \n");
   FILE *readfile;
 
-  // AQUI DEVE INICIAR O SEMAPHORE
+  sem_wait(&mutex);
 
   /* Read orginal file */
   readfile = (FILE *)malloc(sizeof(FILE));
@@ -230,7 +262,7 @@ void* task1(struct PointCloud *temp) {
   // temp->count_points = 0;
   // temp->count_filtered_points = 0;
 
-  // AQUI DEVE FECHAR O SEMAPHORE
+  sem_post(&mutex);
 }
 /*******************************************************************************
 *
@@ -244,7 +276,8 @@ void* task1(struct PointCloud *temp) {
 *
 *******************************************************************************/
 void* task2(struct PointCloud *temp) { // struct Coord coord
-
+  printf("Task2\n");
+  sem_wait(&mutex);
   /* Removing axis X negative Points */
   // for(int i = 0; i < count_points; i++){
   //     if(coord[i].x>0){
@@ -256,7 +289,6 @@ void* task2(struct PointCloud *temp) { // struct Coord coord
   // } // Podemos passar para aqui a função ? o.O (se não precisamos de calcular a math sempre)
 
   x_negative_filter(temp);
-
   /* Clusters were removed above too */
 
   /* Counters points Reset */
@@ -264,7 +296,7 @@ void* task2(struct PointCloud *temp) { // struct Coord coord
 
   //printf("After filtering...\n\n");
   //execute_math(count_filtered_points);
-
+    sem_post(&mutex);
 }
 /*******************************************************************************
 *
@@ -275,9 +307,9 @@ void* task2(struct PointCloud *temp) { // struct Coord coord
 *
 *******************************************************************************/
 void* task3(struct PointCloud *temp) { // struct Coord coord
-
+  printf("Task3\n");
   FILE *writefile;
-
+  sem_wait(&mutex);
   /* STD filtering - Removing Noising Points */
   denoise(temp);
 
@@ -288,7 +320,7 @@ void* task3(struct PointCloud *temp) { // struct Coord coord
   writefile = (FILE *)malloc(sizeof(FILE));
   write_file(temp, writefile, NUMBER_FILE);
   free(writefile);
-
+  sem_post(&mutex);
 }
 /*******************************************************************************
 *
