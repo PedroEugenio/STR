@@ -28,16 +28,10 @@
 #define NUM_POINTS   20000
 /* MAX number of files that our programa can read */
 #define NUM_FILES    3
-
-#define POINTCLOUD1  1
-#define POINTCLOUD2  2
-#define POINTCLOUD3  3
-
 /* Scheduler RMPO */
 #define POLICY2USE SCHED_FIFO //SCHED_RR // SCHED_FIFO
-
-/* Finish Time of threads in s */
-#define FINISH       10
+/* Number of Tasks/Threads to do it */
+#define TASKS        3
 
 /* Struct to store coordinates from Point Clouds files */
 struct PointCloud{
@@ -56,27 +50,33 @@ struct PointCloud{
 
 };
 
-/* One threads for each file */
+/* One threads for each task */
 pthread_t thread[NUM_FILES];
 
-/* Activation time for each thread */
-struct timespec response_time[NUM_FILES] = {{0,0}, {0,0}, {0,0}};
+/* Total Computation time for each CRITICAL TASK CODE ZONE */
+struct timespec critical_response_time[TASKS] = {{0,0}, {0,0}, {0,0}};
 
-/* Computation time for each task */
-float computation_time[NUM_FILES];
+/* Total Computation time for each task */
+struct timespec total_response_time[TASKS] = {{0,0}, {0,0}, {0,0}};
+
+/* To repeat process for the 3 files */
+int NUMBER_FILE = 1;
+
+/* Create a Global Semaphore */
+sem_t mutex;
 
 /* Error Message */
 #ifndef errorExit
 #define errorExit(msg) do{ perror(msg); exit(EXIT_FAILURE); }while(0)
 #endif
 
-/* Global declaration */
+/* Global functions declaration */
 void* task1(struct PointCloud *temp);
 void* task2(struct PointCloud *temp);
 void* task3(struct PointCloud *temp);
 
 void execute_math(struct PointCloud *temp);
-//void response_time();
+void response_times();
 
 void read_file(struct PointCloud *temp, FILE *fptr, int file);
 void write_file(struct PointCloud *temp, FILE *fptr, int file);
@@ -90,26 +90,16 @@ void x_negative_filter(struct PointCloud *temp);
 void denoise(struct PointCloud *temp);
 void ramps(struct PointCloud *temp);
 
-// TESTING
-int NUMBER_FILE = 1;
-
-sem_t mutex;
 
 int main(){
-
-  struct timespec start;
-  struct timespec end;
-
-  printf("\n\nPart I - Threads & Semaphores\n\n");
-
   /* For each file to read, calculate and write */
-  // Isto não muito dinâmico, deviamos passar o nome ficheiro com queremos trabalhar
+  // Isto não muito dinâmico, deviamos passar o nome ficheiro com queremos trabalhar, e criar um script na Shell para
+  // onde recebe como parâmetros o path do ficheiro a ler, neste caso dos 3 ficheiros
   for (NUMBER_FILE = 1; NUMBER_FILE <= NUM_FILES; NUMBER_FILE++) {
 
-    struct PointCloud pointCloud; // original file
-    //struct Coord filter[NUM_POINTS]; // filtered file
+    printf("\n\n------------ Part I - Threads & Semaphores ---------------\n\n");
 
-    struct timespec current_time;
+    struct PointCloud pointCloud; // original file
 
     /* Reset counter to number of points readed in original files */
     pointCloud.count_points = 0;
@@ -130,7 +120,7 @@ int main(){
 
 
     /* One thread for each task: */
-    for (int i = 0; i < NUM_FILES; i++) {
+    for (int i = 0; i < TASKS; i++) {
 
       /* Parameters of threads */
       if( pthread_attr_init(&(attr[i])) != 0 )
@@ -161,21 +151,21 @@ int main(){
 
     }
 
-    /* Create Semaphore */
+    /* Initialize Semaphore */
     sem_init(&mutex, 0, 1);
 
     /* Create threads for all tasks - Filters */
     if(pthread_create(&(thread[0]), &(attr[0]), (void *) task1, (void *) &pointCloud) != 0)
       errorExit("main->pthread_create");
-    printf("Thread 1 Created!! \n");
+    printf("\nThread 1 was created!\n");
 
     if(pthread_create(&(thread[1]), &(attr[1]), (void *) task2,  (void *) &pointCloud) != 0)
       errorExit("main->pthread_create");
-    printf("Thread 2 Created!! \n");
+    printf("\nThread 2 was created!\n");
 
     if(pthread_create(&(thread[2]), &(attr[2]), (void *) task3,  (void *) &pointCloud) != 0)
       errorExit("main->pthread_create");
-    printf("Thread 3 Created!! \n");
+    printf("Thread 3 was created!\n");
 
 
     /* Waits for the ending of each thread tasks - Filters */
@@ -188,43 +178,19 @@ int main(){
     if(pthread_join(thread[2],NULL) != 0)
       errorExit("main->pthread_join");
 
-    printf("\n\nWaiting...\n\n");
-
-
-    // Só para testar: vou chamar aqui as tasks
-    /* clock_gettime(CLOCK_MONOTONIC, &start);
-    task1(&pointCloud);
-    clock_gettime(CLOCK_MONOTONIC, &end);
-    computation_time[0]=time2ms(DIFF(start,end));
-
-    clock_gettime(CLOCK_MONOTONIC, &start);
-    task2(&pointCloud);
-    clock_gettime(CLOCK_MONOTONIC, &end);
-    computation_time[1]=time2ms(DIFF(start,end));
-
-    clock_gettime(CLOCK_MONOTONIC, &start);
-    task3(&pointCloud);
-    clock_gettime(CLOCK_MONOTONIC, &end);
-    computation_time[2]=time2ms(DIFF(start,end));
-
-    for(int i=0; i<NUM_FILES; i++){
-      printf("Computation time Task %d: %LF ms \n",i+1,computation_time[i]);
-    } */
+    printf("\nWaiting...\n\n");
 
     /* Final results... for each task */
-    //do {
-      //printf("\n\nWaiting...\n\n");
-      /* Main thread go to sleep when wake up it will cancel tasks threads */
-      //sleep(FINISH);
+    printf("Response times:\n");
+    response_times();
 
-      for (int i = 0; i < 3; i++) {
-         pthread_cancel(thread[i]);
-      }
-      //printf("Inverse RMPO response times:\n");
-      //response_times();
-      sem_destroy(&mutex); // destroy mutex before ending the program
-      //exit(EXIT_SUCCESS);
-    //} while(1);
+    /* Cancel tasks threads */
+    for (int i = 0; i < TASKS; i++) {
+      pthread_cancel(thread[i]);
+    }
+    /* destroy mutex before ending the program */
+    sem_destroy(&mutex);
+    //exit(EXIT_SUCCESS);
   }
 }
 /*******************************************************************************
@@ -239,38 +205,55 @@ int main(){
 *******************************************************************************/
 void* task1(struct PointCloud *temp) {
 
-  printf("Task1 \n");
+  /* Do some no critical things i.e some resource that                         *
+   * threads don't need to acess at the same time                              */
+
+  printf("\n---------------------------- TASK1 -----------------------------\n");
+
+  struct timespec start_time, critical_end_time, total_end_time;
+
+  /* Capture the start time */
+  clock_gettime(CLOCK_MONOTONIC, &start_time);
 
   FILE *readfile;
 
+  /*                    BEGIN OF CRITICAL CODE ZONE                            *
+   * we want to acess a unique resource: the Point Cloud                       */
   sem_wait(&mutex);
 
-  /* Read orginal file */
+  /* Read orginal PointCloud/file */
   readfile = (FILE *)malloc(sizeof(FILE));
   read_file(temp, readfile, NUMBER_FILE);
   free(readfile);
 
-  printf("Number of points: %i\n", temp->count_points);
-
+  /* Do the math on PointCloud */
   calc_average(temp);
-  printf("Average Value :: x:%.4f y:%.4f z:%.4f\n", temp->average[0], temp->average[1],temp->average[2]);
-
   calc_min(temp);
-  printf("Minimum Value :: x:%.4f y:%.4f z:%.4f \n", temp->min[0], temp->min[1], temp->min[2]);
-
   calc_max(temp);
-  printf("Maximum Value :: x:%.4f y:%.4f z:%.4f \n", temp->max[0], temp->max[1], temp->max[2]);
-
   calc_std(temp);
+
+  printf("Number of points: %i\n", temp->count_points);
+  printf("Average Value :: x:%.4f y:%.4f z:%.4f\n", temp->average[0], temp->average[1],temp->average[2]);
+  printf("Minimum Value :: x:%.4f y:%.4f z:%.4f \n", temp->min[0], temp->min[1], temp->min[2]);
+  printf("Maximum Value :: x:%.4f y:%.4f z:%.4f \n", temp->max[0], temp->max[1], temp->max[2]);
   printf("Standard Deviation Value :: x:%.4f y:%.4f z:%.4f \n", temp->std[0], temp->std[1], temp->std[2]);
 
-  //execute_math(temp);
-
-  /* Counters points Reset */
-  // temp->count_points = 0;
-  // temp->count_filtered_points = 0;
-
+  /*                      END OF CRITICAL CODE ZONE                            *
+   * we don't need anymore to acess a unique resource: the Point Cloud         */
   sem_post(&mutex);
+
+  /* Capture the end time */
+  clock_gettime(CLOCK_MONOTONIC, &critical_end_time);
+
+  /* Do some no critical things i.e some resource that                         *
+   * threads don't need to acess at the same time                              */
+
+  /* Response time = current_time - last_start_time */
+  critical_response_time[0] = DIFF(critical_end_time, start_time);
+
+  /* Capture the end time */
+  clock_gettime(CLOCK_MONOTONIC, &total_end_time);
+  total_response_time[0] = DIFF(total_end_time, start_time);
 }
 /*******************************************************************************
 *
@@ -283,31 +266,45 @@ void* task1(struct PointCloud *temp) {
 * Issues:   Not implemented points that clearly do not correspond to ground
 *
 *******************************************************************************/
-void* task2(struct PointCloud *temp) { // struct Coord coord
+void* task2(struct PointCloud *temp) {
 
-  printf("Task2\n");
+  /* Do some no critical things i.e some resource that                         *
+   * threads don't need to acess at the same time                              */
 
+  printf("\n---------------------------- TASK2 -----------------------------\n");
+
+  struct timespec start_time, critical_end_time, total_end_time;
+
+  /* Capture the start time */
+  clock_gettime(CLOCK_MONOTONIC, &start_time);
+
+  /*                    BEGIN OF CRITICAL CODE ZONE                            *
+   * we want to acess a unique resource: the Point Cloud                       */
   sem_wait(&mutex);
 
-  /* Removing axis X negative Points */
-  // for(int i = 0; i < count_points; i++){
-  //     if(coord[i].x>0){
-  //         temp[count_filtered_points].x = coord[i].x;
-  //         temp[count_filtered_points].y = coord[i].y;
-  //         temp[count_filtered_points].z = coord[i].z;
-  //         count_filtered_points++;
-  //     }
-  // } // Podemos passar para aqui a função ? o.O (se não precisamos de calcular a math sempre)
-
+  /* Removing axis X negative Points and Clusters were removed above too       */
   x_negative_filter(temp);
-  /* Clusters were removed above too */
 
-  /* Counters points Reset */
-  //temp->count_points = temp->count_filtered_points;
-
-  //printf("After filtering...\n\n");
   //execute_math(count_filtered_points);
-    sem_post(&mutex);
+  // It's necessary update the math after filtering?
+  // Do it in the end, if we can achieve better results
+
+  /*                      END OF CRITICAL CODE ZONE                            *
+   * we don't need anymore to acess a unique resource: the Point Cloud         */
+  sem_post(&mutex);
+
+  /* Capture the end time */
+  clock_gettime(CLOCK_MONOTONIC, &critical_end_time);
+
+  /* Do some no critical things i.e some resource that                         *
+   * threads don't need to acess at the same time                              */
+
+  /* Response time = current_time - last_start_time */
+  critical_response_time[1] = DIFF(critical_end_time, start_time);
+
+  /* Capture the end time */
+  clock_gettime(CLOCK_MONOTONIC, &total_end_time);
+  total_response_time[1] = DIFF(total_end_time, start_time);
 }
 /*******************************************************************************
 *
@@ -317,25 +314,54 @@ void* task2(struct PointCloud *temp) { // struct Coord coord
 * Issues: Not implemented. I put here 2.3) discard the Outliers
 *
 *******************************************************************************/
-void* task3(struct PointCloud *temp) { // struct Coord coord
+void* task3(struct PointCloud *temp) {
 
-  printf("Task3\n");
+  /* Do some no critical things i.e some resource that                         *
+   * threads don't need to acess at the same time                              */
+
+  printf("\n---------------------------- TASK3 -----------------------------\n");
+
+  struct timespec start_time, critical_end_time, total_end_time;
+
+  /* Capture the start time */
+  clock_gettime(CLOCK_MONOTONIC, &start_time);
 
   FILE *writefile;
 
+  /*                    BEGIN OF CRITICAL CODE ZONE                            *
+   * we want to acess a unique resource: the Point Cloud                       */
   sem_wait(&mutex);
 
   /* STD filtering - Removing Noising Points */
   denoise(temp);
 
-  //printf("After filtering...\n\n");
   //execute_math(count_filtered_points);
+  // It's necessary update the math after filtering?
+  // Do it in the end, if we can achieve better results
 
   /* Store in other file */
   writefile = (FILE *)malloc(sizeof(FILE));
   write_file(temp, writefile, NUMBER_FILE);
-  free(writefile);
+
+  /*                      END OF CRITICAL CODE ZONE                            *
+   * we don't need anymore to acess a unique resource: the Point Cloud         */
   sem_post(&mutex);
+
+  /* Capture the end time */
+  clock_gettime(CLOCK_MONOTONIC, &critical_end_time);
+
+  /* Do some no critical things i.e some resource that                         *
+   * threads don't need to acess at the same time                              */
+
+  /* Free Buffer to write on file */
+  free(writefile);
+
+  // Response time = current_time - last_start_time
+  critical_response_time[2] = DIFF(critical_end_time, start_time);
+
+  /* Capture the end time */
+  clock_gettime(CLOCK_MONOTONIC, &total_end_time);
+  total_response_time[2] = DIFF(total_end_time, start_time);
 }
 /*******************************************************************************
 *
@@ -345,40 +371,57 @@ void* task3(struct PointCloud *temp) { // struct Coord coord
 *******************************************************************************/
 void execute_math(struct PointCloud *temp) {
 
-  printf("========================================================\n");
-
-  printf("Number of points: %i\n", temp->count_points);
-
   calc_average(temp);
-  printf("Average Value :: x:%.4f y:%.4f z:%.4f\n", temp->average[0], temp->average[1], temp->average[2]);
-
   calc_min(temp);
-  printf("Minimum Value :: x:%.4f y:%.4f z:%.4f \n", temp->min[0], temp->min[1], temp->min[2]);
-
   calc_max(temp);
-  printf("Maximum Value :: x:%.4f y:%.4f z:%.4f \n", temp->max[0], temp->max[1], temp->max[2]);
-
   calc_std(temp);
-  printf("Standard Deviation Value :: x:%.4f y:%.4f z:%.4f \n", temp->std[0], temp->std[1], temp->std[2]);
 
 }
 /*******************************************************************************
 *
 * Objective: Computational time for each Task
-* Issues:
+*
+* Issues: Melhorar esta função, e fazer dela uma só para impressão de tempos
 *
 *******************************************************************************/
-// void response_times() {
-//   /* Print response_times */
-//   printf("TASK 1: %LFs or %LFms\n", time2s(response_time[0]), time2ms(response_time[0]));
-//   printf("TASK 2: %LFs or %LFms\n", time2s(response_time[1]), time2ms(response_time[1]));
-//   printf("TASK 3: %LFs or %LFms\n", time2s(response_time[2]), time2ms(response_time[2]));
-//
-//   /* Clear responses times */
-//   for (int i = 0; i < TASKS; i++) {
-//     response_time[i] = SET(0, 0);
-//   }
-// }
+void response_times() {
+
+  struct timespec total_time;
+
+  printf("\n-------------- TIME ON CRITICAL TASKS CODE ZONE ----------------\n");
+
+  /* Print response_times */
+  printf("TASK 1: %LFs or %LFms\n", time2s(critical_response_time[0]), time2ms(critical_response_time[0]));
+  printf("TASK 2: %LFs or %LFms\n", time2s(critical_response_time[1]), time2ms(critical_response_time[1]));
+  printf("TASK 3: %LFs or %LFms\n", time2s(critical_response_time[2]), time2ms(critical_response_time[2]));
+
+  total_time = SUM(critical_response_time[1], critical_response_time[0]);
+  total_time = SUM(critical_response_time[2], total_time);
+
+  printf("TOTAL TIME: %LFs or %LFms\n", time2s(total_time), time2ms(total_time));
+
+  /* Clear responses times */
+  for (int i = 0; i < TASKS; i++) {
+    critical_response_time[i] = SET(0, 0);
+  }
+
+  printf("\n-------------------- TOTAL TIME OF TASKS -----------------------\n");
+
+  /* Print response_times */
+  printf("TASK 1: %LFs or %LFms\n", time2s(total_response_time[0]), time2ms(total_response_time[0]));
+  printf("TASK 2: %LFs or %LFms\n", time2s(total_response_time[1]), time2ms(total_response_time[1]));
+  printf("TASK 3: %LFs or %LFms\n", time2s(total_response_time[2]), time2ms(total_response_time[2]));
+
+  total_time = SUM(total_response_time[1], total_response_time[0]);
+  total_time = SUM(total_response_time[2], total_time);
+
+  printf("TOTAL TIME: %LFs or %LFms\n", time2s(total_time), time2ms(total_time));
+
+  /* Clear responses times */
+  for (int i = 0; i < TASKS; i++) {
+    total_response_time[i] = SET(0, 0);
+  }
+}
 /*******************************************************************************
 *
 * Objective: Read file from directory and save data into a structure array
