@@ -30,7 +30,7 @@
 #define NUM_FILES    3
 
 #define POINTCLOUD1  1
-#define POINTCLOUD2  1
+#define POINTCLOUD2  2
 #define POINTCLOUD3  3
 
 /* Scheduler RMPO */
@@ -97,15 +97,14 @@ sem_t mutex;
 
 int main(){
 
-  struct timespec start; 
+  struct timespec start;
   struct timespec end;
 
   printf("\n\nPart I - Threads & Semaphores\n\n");
 
   /* For each file to read, calculate and write */
   // Isto não muito dinâmico, deviamos passar o nome ficheiro com queremos trabalhar
-  // até está na alinea 1
-  //for (int NUMBER_FILE = 1; NUMBER_FILE <= NUM_FILES; NUMBER_FILE++) {
+  for (NUMBER_FILE = 1; NUMBER_FILE <= NUM_FILES; NUMBER_FILE++) {
 
     struct PointCloud pointCloud; // original file
     //struct Coord filter[NUM_POINTS]; // filtered file
@@ -161,27 +160,36 @@ int main(){
       errorExit("main->pthread_attr_setschedparam");
 
     }
-    
+
+    /* Create Semaphore */
     sem_init(&mutex, 0, 1);
+
     /* Create threads for all tasks - Filters */
     if(pthread_create(&(thread[0]), &(attr[0]), (void *) task1, (void *) &pointCloud) != 0)
       errorExit("main->pthread_create");
     printf("Thread 1 Created!! \n");
+
     if(pthread_create(&(thread[1]), &(attr[1]), (void *) task2,  (void *) &pointCloud) != 0)
       errorExit("main->pthread_create");
     printf("Thread 2 Created!! \n");
+
     if(pthread_create(&(thread[2]), &(attr[2]), (void *) task3,  (void *) &pointCloud) != 0)
       errorExit("main->pthread_create");
     printf("Thread 3 Created!! \n");
+
+
     /* Waits for the ending of each thread tasks - Filters */
     if(pthread_join(thread[0],NULL) != 0)
       errorExit("main->pthread_join");
-    
+
     if(pthread_join(thread[1],NULL) != 0)
       errorExit("main->pthread_join");
-    
+
     if(pthread_join(thread[2],NULL) != 0)
       errorExit("main->pthread_join");
+
+    printf("\n\nWaiting...\n\n");
+
 
     // Só para testar: vou chamar aqui as tasks
     /* clock_gettime(CLOCK_MONOTONIC, &start);
@@ -204,22 +212,20 @@ int main(){
     } */
 
     /* Final results... for each task */
-    do {
-      printf("\n\nWaiting...\n\n");
+    //do {
+      //printf("\n\nWaiting...\n\n");
       /* Main thread go to sleep when wake up it will cancel tasks threads */
       //sleep(FINISH);
 
-      // for (int i = 0; i < 3; i++) {
-      //   pthread_cancel(thread[i]);
-      // }
+      for (int i = 0; i < 3; i++) {
+         pthread_cancel(thread[i]);
+      }
       //printf("Inverse RMPO response times:\n");
       //response_times();
       sem_destroy(&mutex); // destroy mutex before ending the program
-      exit(EXIT_SUCCESS);
-    } while(1);
-
-    
-  //}
+      //exit(EXIT_SUCCESS);
+    //} while(1);
+  }
 }
 /*******************************************************************************
 *
@@ -232,14 +238,16 @@ int main(){
 *
 *******************************************************************************/
 void* task1(struct PointCloud *temp) {
+
   printf("Task1 \n");
+
   FILE *readfile;
 
   sem_wait(&mutex);
 
   /* Read orginal file */
   readfile = (FILE *)malloc(sizeof(FILE));
-  read_file(temp, readfile, POINTCLOUD1);
+  read_file(temp, readfile, NUMBER_FILE);
   free(readfile);
 
   printf("Number of points: %i\n", temp->count_points);
@@ -276,8 +284,11 @@ void* task1(struct PointCloud *temp) {
 *
 *******************************************************************************/
 void* task2(struct PointCloud *temp) { // struct Coord coord
+
   printf("Task2\n");
+
   sem_wait(&mutex);
+
   /* Removing axis X negative Points */
   // for(int i = 0; i < count_points; i++){
   //     if(coord[i].x>0){
@@ -307,9 +318,13 @@ void* task2(struct PointCloud *temp) { // struct Coord coord
 *
 *******************************************************************************/
 void* task3(struct PointCloud *temp) { // struct Coord coord
+
   printf("Task3\n");
+
   FILE *writefile;
+
   sem_wait(&mutex);
+
   /* STD filtering - Removing Noising Points */
   denoise(temp);
 
