@@ -30,6 +30,7 @@
 #include <sched.h>
 #include <semaphore.h>
 #include "timespec.h" // pointCloud
+#include "timespec.c" // pointCloud
 
 using namespace std;
 
@@ -66,9 +67,6 @@ struct timespec critical_response_time[TASKS] = {{0,0}, {0,0}, {0,0}};
 /* Total Computation time for each task */
 struct timespec total_response_time[TASKS] = {{0,0}, {0,0}, {0,0}};
 
-/* To repeat process for the 3 files */
-int NUMBER_FILE = 1;
-
 /* Create a Global Semaphore */
 sem_t mutex;
 
@@ -78,17 +76,15 @@ sem_t mutex;
 #endif
 
 /* Global functions declaration */
-void* _task1(struct PointCloud *temp);
-void* _task2(struct PointCloud *temp);
-void* _task3(struct PointCloud *temp);
-
-void* task1(void *arg);
+void task1(struct PointCloud *temp); // void* void* task1(void *arg);
+void task2(struct PointCloud *temp);
+void task3(struct PointCloud *temp);
 
 void execute_math(struct PointCloud *temp);
 void response_times();
 
-void read_file(struct PointCloud *temp, FILE *fptr, int file);
-void write_file(struct PointCloud *temp, FILE *fptr, int file);
+void read_file(struct PointCloud *temp);
+void write_file(struct PointCloud *temp);
 
 void calc_average(struct PointCloud *temp);
 void calc_min(struct PointCloud *temp);
@@ -99,6 +95,7 @@ void x_negative_filter(struct PointCloud *temp);
 void denoise(struct PointCloud *temp);
 void ramps(struct PointCloud *temp);
 
+void pointcloudCallback(sensor_msgs::PointCloud2::ConstPtr scan_out);
 void process();
 
 /* Create a ROS Publisher to public a output point cloud message */
@@ -113,96 +110,8 @@ sensor_msgs::PointCloud output;
 /* To run our threads  */
 bool runflag = false;
 
-
-
-/*******************************************************************************
-*
-* Objective:
-*
-* Issues:
-*
-*******************************************************************************/
-void pointcloudCallback(sensor_msgs::PointCloud2::ConstPtr scan_out) {
-
-  //ROS_INFO("Points: ");
-
-  pointcloud = scan_out;
-
-  //sensor_msgs::PointCloud output;
-
-  sensor_msgs::convertPointCloud2ToPointCloud(*pointcloud, input);
-
-  //std::cout << "Points: " << scan_out->height*scan_out->width << std::endl;
-
-  std::cout << "Points: " << input.points.size() << std::endl;
-
-  //for (int i = 0; i < output.points.size(); i++) {
-
-    //std::cout << "X: " << output.points[i].x << "Y: " << output.points[i].y << "Z: " << output.points[i].z << std::endl;
-
-  //}
-  runflag = true;
-
-}
-/*******************************************************************************
-*
-* Objective:  Read the values from the file and pass the values to arrays/matrix
-*             inside a struct variable.
-*             Calculate and print: the number of points, minimum, maximum
-*             average, stand-deviation.
-*
-* Issues:
-*
-*******************************************************************************/
-void* task1(void *arg) { // sensor_msgs::PointCloud2::ConstPtr pc
-
-  //Part I 1)
-  cout << "Hello\n";
-
-}
-/*******************************************************************************
-*
-* Objective: Remove all the points that are located in the “back/behind” part
-*            of the car with respect to the sensor (ie, negative values of x.)
-*            Detect and remove two groups (clusters) of points that are located
-*            very close to the car. Discard those points that clearly do not
-*            correspond to the ground/road (ie, the Outliers)
-*
-* Issues:   Not implemented points that clearly do not correspond to ground
-*
-*******************************************************************************/
-void task2(){
-
-  //Part I 2)
-
-}
-/*******************************************************************************
-*
-* Objective: Detect the points that belong to the drivable area with respect to
-*            the car i.e LIDAR points that belong to the ground/road
-*
-* Issues: Not implemented. I put here 2.3) discard the Outliers
-*
-*******************************************************************************/
-void task3(){
-
-  sensor_msgs::PointCloud output;
-
-  output.header = pointcloud->header; //set message header (using the same from /velodyne_points)
-
-  //Part I 3)
-
-
-  /* Publish/broadcast the message to anyone who is connected */
-  newPointCloud.publish(output);
-}
-/*******************************************************************************
-*
-* Objective:
-*
-* Issues:
-*
-*******************************************************************************/
+/*
+                                                                              */
 int main(int argc, char **argv) {
 
   /* Initialize ROS node  */
@@ -220,7 +129,12 @@ int main(int argc, char **argv) {
   /* Specify a frequency that you would like to loop at */
   ros::Rate rate(10);
 
+  struct PointCloud pointCloud; // original file
 
+  /* Reset counter to number of points readed in original files */
+  pointCloud.count_points = 0;
+  /* Reset counter to number of points writed in filtered files */
+  pointCloud.count_filtered_points = 0;
 
   while(nh.ok()) {
     /*
@@ -232,11 +146,20 @@ int main(int argc, char **argv) {
     */
 
     if(runflag) {
-      // task1(pointcloud);
-      // task2();
-      // task3();
 
-      process();
+      //process();
+
+      //task1(&pointCloud);
+      //task2(&pointCloud);
+      //task3(&pointCloud);
+      for(int i = 0; i < input.points.size(); i++){
+        // Saves the values from .txt file to the variables
+        output.points[i].x = input.points[i].x; // temp->x[temp->count_points]
+        output.points[i].y = input.points[i].y; // temp->y[temp->count_points]
+        output.points[i].z = input.points[i].z; // temp->z[temp->count_points]
+
+        //temp->count_points++;  // last line of coord is all 0
+      }
 
       runflag = false;
     }
@@ -250,105 +173,30 @@ int main(int argc, char **argv) {
   }
   return 1;
 }
+/*******************************************************************************
+*
+* Objective: Callback Subscriber
+*
+* Issues:
+*
+*******************************************************************************/
+void pointcloudCallback(sensor_msgs::PointCloud2::ConstPtr scan_out) {
 
+  //pointcloud = scan_out;
 
+  //sensor_msgs::PointCloud output;
 
-void process() {
+  sensor_msgs::convertPointCloud2ToPointCloud(*scan_out, input); // *pointcloud, input
 
-  printf("\n\n------------ Part I - Threads & Semaphores ---------------\n\n");
+  //std::cout << "Points: " << scan_out->height*scan_out->width << std::endl;
 
-  struct PointCloud pointCloud; // original file
+  std::cout << "Points: " << input.points.size() << std::endl;
 
-  /* Reset counter to number of points readed in original files */
-  pointCloud.count_points = 0;
-  /* Reset counter to number of points writed in filtered files */
-  pointCloud.count_filtered_points = 0;
+  //for (int i = 0; i < output.points.size(); i++) {
+    //std::cout << "X: " << output.points[i].x << "Y: " << output.points[i].y << "Z: " << output.points[i].z << std::endl;
+  //}
 
-  /* Lock all of the calling process's virtual address space into RAM  Note: requires "sudo" to lock the memory. */
-  if( mlockall(MCL_CURRENT | MCL_FUTURE) == -1 )
-  errorExit("main->mlockall");
-
-  cpu_set_t mask;
-  pthread_attr_t attr[3];
-  struct sched_param priority[3];
-
-  /* Set all threads affinity to CPU0 */
-  CPU_ZERO(&mask);
-  CPU_SET(0, &mask);
-
-
-  /* One thread for each task: */
-  for (int i = 0; i < TASKS; i++) {
-
-    /* Parameters of threads */
-    if( pthread_attr_init(&(attr[i])) != 0 )
-    errorExit("main->pthread_attr_init");
-
-    /* Sets the affinity of all threads to the previously defined core */
-    if( pthread_attr_setaffinity_np(&(attr[i]), sizeof(cpu_set_t), &mask) != 0 )
-    errorExit("main->pthread_attr_setaffinity");
-
-    /* By predefinition, the threads executes with implicit scheduling */
-    if( pthread_attr_setinheritsched(&(attr[i]), PTHREAD_EXPLICIT_SCHED) != 0 )
-    errorExit("main->pthread_attr_setinheritsched");
-
-    /* Scheduler */
-    if( pthread_attr_setschedpolicy(&(attr[i]), POLICY2USE) != 0 )
-    errorExit("main->pthread_attr_setschedpolicy");
-
-
-    /* All threads with the same priority value */
-    memset(&(priority[i]), 0, sizeof(struct sched_param));
-    if( (priority[i].sched_priority = sched_get_priority_max(POLICY2USE)) == -1)
-    errorExit("main->sched_get_priority_max");
-
-    printf("Priority of Task %d: %d\n", i+1, priority[i].sched_priority);
-
-    if( pthread_attr_setschedparam(&(attr[i]), &(priority[i])) != 0 )
-    errorExit("main->pthread_attr_setschedparam");
-
-  }
-
-  /* Initialize Semaphore */
-  sem_init(&mutex, 0, 1);
-
-  /* Create threads for all tasks - Filters */
-  if(pthread_create(&(thread[0]), &(attr[0]), task1, NULL) != 0) // (void *) task3 (void *) &pointCloud void* (*)(task1)
-    errorExit("main->pthread_create");
-  printf("\nThread 1 was created!\n");
-  //
-  // if(pthread_create(&(thread[1]), &(attr[1]), task2, NULL) != 0)
-  //   errorExit("main->pthread_create");
-  // printf("\nThread 2 was created!\n");
-  //
-  // if(pthread_create(&(thread[2]), &(attr[2]), task3, NULL) != 0)
-  //   errorExit("main->pthread_create");
-  // printf("Thread 3 was created!\n");
-  //
-  //
-  /* Waits for the ending of each thread tasks - Filters */
-  if(pthread_join(thread[0],NULL) != 0)
-    errorExit("main->pthread_join");
-  //
-  // if(pthread_join(thread[1],NULL) != 0)
-  //   errorExit("main->pthread_join");
-  //
-  // if(pthread_join(thread[2],NULL) != 0)
-  //   errorExit("main->pthread_join");
-
-  printf("\nWaiting...\n\n");
-
-  /* Final results... for each task */
-  printf("Response times:\n");
-  //response_times();
-
-  /* Cancel tasks threads */
-  for (int i = 0; i < 1; i++) {
-    pthread_cancel(thread[i]);
-  }
-  /* destroy mutex before ending the program */
-  sem_destroy(&mutex);
-  //exit(EXIT_SUCCESS);
+  runflag = true;
 }
 /*******************************************************************************
 *
@@ -360,166 +208,155 @@ void process() {
 * Issues:
 *
 *******************************************************************************/
-// void* _task1(struct PointCloud *temp) {
-//
-//   /* Do some no critical things i.e some resource that                         *
-//    * threads don't need to acess at the same time                              */
-//
-//   printf("\n---------------------------- TASK1 -----------------------------\n");
-//
-//   struct timespec start_time, critical_end_time, total_end_time;
-//
-//   /* Capture the start time */
-//   clock_gettime(CLOCK_MONOTONIC, &start_time);
-//
-//   FILE *readfile;
-//
-//   /*                    BEGIN OF CRITICAL CODE ZONE                            *
-//    * we want to acess a unique resource: the Point Cloud                       */
-//   sem_wait(&mutex);
-//
-//   /* Read orginal PointCloud/file */
-//   readfile = (FILE *)malloc(sizeof(FILE));
-//   read_file(temp, readfile, NUMBER_FILE);
-//   free(readfile);
-//
-//   /* Do the math on PointCloud */
-//   calc_average(temp);
-//   calc_min(temp);
-//   calc_max(temp);
-//   calc_std(temp);
-//
-//   printf("Number of points: %i\n", temp->count_points);
-//   printf("Average Value :: x:%.4f y:%.4f z:%.4f\n", temp->average[0], temp->average[1],temp->average[2]);
-//   printf("Minimum Value :: x:%.4f y:%.4f z:%.4f \n", temp->min[0], temp->min[1], temp->min[2]);
-//   printf("Maximum Value :: x:%.4f y:%.4f z:%.4f \n", temp->max[0], temp->max[1], temp->max[2]);
-//   printf("Standard Deviation Value :: x:%.4f y:%.4f z:%.4f \n", temp->std[0], temp->std[1], temp->std[2]);
-//
-//   /*                      END OF CRITICAL CODE ZONE                            *
-//    * we don't need anymore to acess a unique resource: the Point Cloud         */
-//   sem_post(&mutex);
-//
-//   /* Capture the end time */
-//   clock_gettime(CLOCK_MONOTONIC, &critical_end_time);
-//
-//   /* Do some no critical things i.e some resource that                         *
-//    * threads don't need to acess at the same time                              */
-//
-//   /* Response time = current_time - last_start_time */
-//   critical_response_time[0] = DIFF(critical_end_time, start_time);
-//
-//   /* Capture the end time */
-//   clock_gettime(CLOCK_MONOTONIC, &total_end_time);
-//   total_response_time[0] = DIFF(total_end_time, start_time);
-// }
-// /*******************************************************************************
-// *
-// * Objective: Remove all the points that are located in the “back/behind” part
-// *            of the car with respect to the sensor (ie, negative values of x.)
-// *            Detect and remove two groups (clusters) of points that are located
-// *            very close to the car. Discard those points that clearly do not
-// *            correspond to the ground/road (ie, the Outliers)
-// *
-// * Issues:   Not implemented points that clearly do not correspond to ground
-// *
-// *******************************************************************************/
-// void* _task2(struct PointCloud *temp) {
-//
-//   /* Do some no critical things i.e some resource that                         *
-//    * threads don't need to acess at the same time                              */
-//
-//   printf("\n---------------------------- TASK2 -----------------------------\n");
-//
-//   struct timespec start_time, critical_end_time, total_end_time;
-//
-//   /* Capture the start time */
-//   clock_gettime(CLOCK_MONOTONIC, &start_time);
-//
-//   /*                    BEGIN OF CRITICAL CODE ZONE                            *
-//    * we want to acess a unique resource: the Point Cloud                       */
-//   sem_wait(&mutex);
-//
-//   /* Removing axis X negative Points and Clusters were removed above too       */
-//   x_negative_filter(temp);
-//
-//   //execute_math(count_filtered_points);
-//   // It's necessary update the math after filtering?
-//   // Do it in the end, if we can achieve better results
-//
-//   /*                      END OF CRITICAL CODE ZONE                            *
-//    * we don't need anymore to acess a unique resource: the Point Cloud         */
-//   sem_post(&mutex);
-//
-//   /* Capture the end time */
-//   clock_gettime(CLOCK_MONOTONIC, &critical_end_time);
-//
-//   /* Do some no critical things i.e some resource that                         *
-//    * threads don't need to acess at the same time                              */
-//
-//   /* Response time = current_time - last_start_time */
-//   critical_response_time[1] = DIFF(critical_end_time, start_time);
-//
-//   /* Capture the end time */
-//   clock_gettime(CLOCK_MONOTONIC, &total_end_time);
-//   total_response_time[1] = DIFF(total_end_time, start_time);
-// }
-// /*******************************************************************************
-// *
-// * Objective: Detect the points that belong to the drivable area with respect to
-// *            the car i.e LIDAR points that belong to the ground/road
-// *
-// * Issues: Not implemented. I put here 2.3) discard the Outliers
-// *
-// *******************************************************************************/
-// void* _task3(struct PointCloud *temp) {
-//
-//   /* Do some no critical things i.e some resource that                         *
-//    * threads don't need to acess at the same time                              */
-//
-//   printf("\n---------------------------- TASK3 -----------------------------\n");
-//
-//   struct timespec start_time, critical_end_time, total_end_time;
-//
-//   /* Capture the start time */
-//   clock_gettime(CLOCK_MONOTONIC, &start_time);
-//
-//   FILE *writefile;
-//
-//   /*                    BEGIN OF CRITICAL CODE ZONE                            *
-//    * we want to acess a unique resource: the Point Cloud                       */
-//   sem_wait(&mutex);
-//
-//   /* STD filtering - Removing Noising Points */
-//   denoise(temp);
-//
-//   //execute_math(count_filtered_points);
-//   // It's necessary update the math after filtering?
-//   // Do it in the end, if we can achieve better results
-//
-//   /* Store in other file */
-//   writefile = (FILE *)malloc(sizeof(FILE));
-//   write_file(temp, writefile, NUMBER_FILE);
-//
-//   /*                      END OF CRITICAL CODE ZONE                            *
-//    * we don't need anymore to acess a unique resource: the Point Cloud         */
-//   sem_post(&mutex);
-//
-//   /* Capture the end time */
-//   clock_gettime(CLOCK_MONOTONIC, &critical_end_time);
-//
-//   /* Do some no critical things i.e some resource that                         *
-//    * threads don't need to acess at the same time                              */
-//
-//   /* Free Buffer to write on file */
-//   free(writefile);
-//
-//   // Response time = current_time - last_start_time
-//   critical_response_time[2] = DIFF(critical_end_time, start_time);
-//
-//   /* Capture the end time */
-//   clock_gettime(CLOCK_MONOTONIC, &total_end_time);
-//   total_response_time[2] = DIFF(total_end_time, start_time);
-// }
+void task1(struct PointCloud *temp) {
+
+  /* Do some no critical things i.e some resource that                         *
+   * threads don't need to acess at the same time                              */
+
+  printf("\n---------------------------- TASK1 -----------------------------\n");
+
+  struct timespec start_time, critical_end_time, total_end_time;
+
+  /* Capture the start time */
+  clock_gettime(CLOCK_MONOTONIC, &start_time);
+
+  /*                    BEGIN OF CRITICAL CODE ZONE                            *
+   * we want to acess a unique resource: the Point Cloud                       */
+  //sem_wait(&mutex);
+
+  /* Read orginal PointCloud/file */
+  read_file(temp);
+
+  /* Do the math on PointCloud */
+  calc_average(temp);
+  calc_min(temp);
+  calc_max(temp);
+  calc_std(temp);
+
+  printf("Number of points: %i\n", temp->count_points);
+  printf("Average Value :: x:%.4f y:%.4f z:%.4f\n", temp->average[0], temp->average[1],temp->average[2]);
+  printf("Minimum Value :: x:%.4f y:%.4f z:%.4f \n", temp->min[0], temp->min[1], temp->min[2]);
+  printf("Maximum Value :: x:%.4f y:%.4f z:%.4f \n", temp->max[0], temp->max[1], temp->max[2]);
+  printf("Standard Deviation Value :: x:%.4f y:%.4f z:%.4f \n", temp->std[0], temp->std[1], temp->std[2]);
+
+  /*                      END OF CRITICAL CODE ZONE                            *
+   * we don't need anymore to acess a unique resource: the Point Cloud         */
+  //sem_post(&mutex);
+
+  /* Capture the end time */
+  clock_gettime(CLOCK_MONOTONIC, &critical_end_time);
+
+  /* Do some no critical things i.e some resource that                         *
+   * threads don't need to acess at the same time                              */
+
+  /* Response time = current_time - last_start_time */
+  critical_response_time[0] = DIFF(critical_end_time, start_time);
+
+  /* Capture the end time */
+  clock_gettime(CLOCK_MONOTONIC, &total_end_time);
+  total_response_time[0] = DIFF(total_end_time, start_time);
+}
+/*******************************************************************************
+*
+* Objective: Remove all the points that are located in the “back/behind” part
+*            of the car with respect to the sensor (ie, negative values of x.)
+*            Detect and remove two groups (clusters) of points that are located
+*            very close to the car. Discard those points that clearly do not
+*            correspond to the ground/road (ie, the Outliers)
+*
+* Issues:   Not implemented points that clearly do not correspond to ground
+*
+*******************************************************************************/
+void task2(struct PointCloud *temp) {
+
+  /* Do some no critical things i.e some resource that                         *
+   * threads don't need to acess at the same time                              */
+
+  printf("\n---------------------------- TASK2 -----------------------------\n");
+
+  struct timespec start_time, critical_end_time, total_end_time;
+
+  /* Capture the start time */
+  clock_gettime(CLOCK_MONOTONIC, &start_time);
+
+  /*                    BEGIN OF CRITICAL CODE ZONE                            *
+   * we want to acess a unique resource: the Point Cloud                       */
+  //sem_wait(&mutex);
+
+  /* Removing axis X negative Points and Clusters were removed above too       */
+  x_negative_filter(temp);
+
+  //execute_math(count_filtered_points);
+  // It's necessary update the math after filtering?
+  // Do it in the end, if we can achieve better results
+
+  /*                      END OF CRITICAL CODE ZONE                            *
+   * we don't need anymore to acess a unique resource: the Point Cloud         */
+  //sem_post(&mutex);
+
+  /* Capture the end time */
+  clock_gettime(CLOCK_MONOTONIC, &critical_end_time);
+
+  /* Do some no critical things i.e some resource that                         *
+   * threads don't need to acess at the same time                              */
+
+  /* Response time = current_time - last_start_time */
+  critical_response_time[1] = DIFF(critical_end_time, start_time);
+
+  /* Capture the end time */
+  clock_gettime(CLOCK_MONOTONIC, &total_end_time);
+  total_response_time[1] = DIFF(total_end_time, start_time);
+}
+/*******************************************************************************
+*
+* Objective: Detect the points that belong to the drivable area with respect to
+*            the car i.e LIDAR points that belong to the ground/road
+*
+* Issues: Not implemented. I put here 2.3) discard the Outliers
+*
+*******************************************************************************/
+void task3(struct PointCloud *temp) {
+
+  /* Do some no critical things i.e some resource that                         *
+   * threads don't need to acess at the same time                              */
+
+  printf("\n---------------------------- TASK3 -----------------------------\n");
+
+  struct timespec start_time, critical_end_time, total_end_time;
+
+  /* Capture the start time */
+  clock_gettime(CLOCK_MONOTONIC, &start_time);
+
+  /*                    BEGIN OF CRITICAL CODE ZONE                            *
+   * we want to acess a unique resource: the Point Cloud                       */
+  //sem_wait(&mutex);
+
+  /* STD filtering - Removing Noising Points */
+  denoise(temp);
+
+  //execute_math(count_filtered_points);
+  // It's necessary update the math after filtering?
+  // Do it in the end, if we can achieve better results
+
+  //write_file(temp);
+
+  /*                      END OF CRITICAL CODE ZONE                            *
+   * we don't need anymore to acess a unique resource: the Point Cloud         */
+  //sem_post(&mutex);
+
+  /* Capture the end time */
+  clock_gettime(CLOCK_MONOTONIC, &critical_end_time);
+
+  /* Do some no critical things i.e some resource that                         *
+   * threads don't need to acess at the same time                              */
+
+  // Response time = current_time - last_start_time
+  critical_response_time[2] = DIFF(critical_end_time, start_time);
+
+  /* Capture the end time */
+  clock_gettime(CLOCK_MONOTONIC, &total_end_time);
+  total_response_time[2] = DIFF(total_end_time, start_time);
+}
 /*******************************************************************************
 *
 * Objective: Math tasks to do in each Point Cloud
@@ -541,44 +378,44 @@ void execute_math(struct PointCloud *temp) {
 * Issues: Melhorar esta função, e fazer dela uma só para impressão de tempos
 *
 *******************************************************************************/
-// void response_times() {
-//
-//   struct timespec total_time;
-//
-//   printf("\n-------------- TIME ON CRITICAL TASKS CODE ZONE ----------------\n");
-//
-//   /* Print response_times */
-//   printf("TASK 1: %LFs or %LFms\n", time2s(critical_response_time[0]), time2ms(critical_response_time[0]));
-//   printf("TASK 2: %LFs or %LFms\n", time2s(critical_response_time[1]), time2ms(critical_response_time[1]));
-//   printf("TASK 3: %LFs or %LFms\n", time2s(critical_response_time[2]), time2ms(critical_response_time[2]));
-//
-//   total_time = SUM(critical_response_time[1], critical_response_time[0]);
-//   total_time = SUM(critical_response_time[2], total_time);
-//
-//   printf("TOTAL TIME: %LFs or %LFms\n", time2s(total_time), time2ms(total_time));
-//
-//   /* Clear responses times */
-//   for (int i = 0; i < TASKS; i++) {
-//     critical_response_time[i] = SET(0, 0);
-//   }
-//
-//   printf("\n-------------------- TOTAL TIME OF TASKS -----------------------\n");
-//
-//   /* Print response_times */
-//   printf("TASK 1: %LFs or %LFms\n", time2s(total_response_time[0]), time2ms(total_response_time[0]));
-//   printf("TASK 2: %LFs or %LFms\n", time2s(total_response_time[1]), time2ms(total_response_time[1]));
-//   printf("TASK 3: %LFs or %LFms\n", time2s(total_response_time[2]), time2ms(total_response_time[2]));
-//
-//   total_time = SUM(total_response_time[1], total_response_time[0]);
-//   total_time = SUM(total_response_time[2], total_time);
-//
-//   printf("TOTAL TIME: %LFs or %LFms\n", time2s(total_time), time2ms(total_time));
-//
-//   /* Clear responses times */
-//   for (int i = 0; i < TASKS; i++) {
-//     total_response_time[i] = SET(0, 0);
-//   }
-// }
+void response_times() {
+
+  struct timespec total_time;
+
+  printf("\n-------------- TIME ON CRITICAL TASKS CODE ZONE ----------------\n");
+
+  /* Print response_times */
+  printf("TASK 1: %LFs or %LFms\n", time2s(critical_response_time[0]), time2ms(critical_response_time[0]));
+  printf("TASK 2: %LFs or %LFms\n", time2s(critical_response_time[1]), time2ms(critical_response_time[1]));
+  printf("TASK 3: %LFs or %LFms\n", time2s(critical_response_time[2]), time2ms(critical_response_time[2]));
+
+  total_time = SUM(critical_response_time[1], critical_response_time[0]);
+  total_time = SUM(critical_response_time[2], total_time);
+
+  printf("TOTAL TIME: %LFs or %LFms\n", time2s(total_time), time2ms(total_time));
+
+  /* Clear responses times */
+  for (int i = 0; i < TASKS; i++) {
+    critical_response_time[i] = SET(0, 0);
+  }
+
+  printf("\n-------------------- TOTAL TIME OF TASKS -----------------------\n");
+
+  /* Print response_times */
+  printf("TASK 1: %LFs or %LFms\n", time2s(total_response_time[0]), time2ms(total_response_time[0]));
+  printf("TASK 2: %LFs or %LFms\n", time2s(total_response_time[1]), time2ms(total_response_time[1]));
+  printf("TASK 3: %LFs or %LFms\n", time2s(total_response_time[2]), time2ms(total_response_time[2]));
+
+  total_time = SUM(total_response_time[1], total_response_time[0]);
+  total_time = SUM(total_response_time[2], total_time);
+
+  printf("TOTAL TIME: %LFs or %LFms\n", time2s(total_time), time2ms(total_time));
+
+  /* Clear responses times */
+  for (int i = 0; i < TASKS; i++) {
+    total_response_time[i] = SET(0, 0);
+  }
+}
 /*******************************************************************************
 *
 * Objective: Read file from directory and save data into a structure array
@@ -590,15 +427,13 @@ void read_file(struct PointCloud *temp){
 
   for(int i = 0; i < input.points.size(); i++){
     // Saves the values from .txt file to the variables
-    temp->x[temp->count_points] = input.points[i].x;
-    temp->y[temp->count_points] = input.points[i].y;
-    temp->z[temp->count_points] = input.points[i].z;
+    output.points[i].x = input.points[i].x; // temp->x[temp->count_points]
+    output.points[i].y = input.points[i].y; // temp->y[temp->count_points]
+    output.points[i].z = input.points[i].z; // temp->z[temp->count_points]
 
     temp->count_points++;  // last line of coord is all 0
   }
 
-  /* Publish/broadcast the message to anyone who is connected */
-  newPointCloud.publish(output);
 }
 /*******************************************************************************
 *
@@ -617,6 +452,8 @@ void write_file(struct PointCloud *temp){
     output.points[i].y = temp->y[temp->count_points];
     output.points[i].z = temp->z[temp->count_points];
   }
+  /* Publish/broadcast the message to anyone who is connected */
+  newPointCloud.publish(output);
 }
 /*******************************************************************************
 *
@@ -759,4 +596,109 @@ void denoise(struct PointCloud *temp){
 *******************************************************************************/
 void ramps(struct PointCloud *temp){
 
+
+
+}
+/*******************************************************************************
+*
+* Objective: Detect ramps
+* Issues: Not implemented. Claculate derivative of Z
+*
+*******************************************************************************/
+void process() {
+
+  printf("\n\n------------ Part I - Threads & Semaphores ---------------\n\n");
+
+  struct PointCloud pointCloud; // original file
+
+  /* Reset counter to number of points readed in original files */
+  pointCloud.count_points = 0;
+  /* Reset counter to number of points writed in filtered files */
+  pointCloud.count_filtered_points = 0;
+
+  /* Lock all of the calling process's virtual address space into RAM  Note: requires "sudo" to lock the memory. */
+  if( mlockall(MCL_CURRENT | MCL_FUTURE) == -1 )
+  errorExit("main->mlockall");
+
+  cpu_set_t mask;
+  pthread_attr_t attr[3];
+  struct sched_param priority[3];
+
+  /* Set all threads affinity to CPU0 */
+  CPU_ZERO(&mask);
+  CPU_SET(0, &mask);
+
+
+  /* One thread for each task: */
+  for (int i = 0; i < TASKS; i++) {
+
+    /* Parameters of threads */
+    if( pthread_attr_init(&(attr[i])) != 0 )
+    errorExit("main->pthread_attr_init");
+
+    /* Sets the affinity of all threads to the previously defined core */
+    if( pthread_attr_setaffinity_np(&(attr[i]), sizeof(cpu_set_t), &mask) != 0 )
+    errorExit("main->pthread_attr_setaffinity");
+
+    /* By predefinition, the threads executes with implicit scheduling */
+    if( pthread_attr_setinheritsched(&(attr[i]), PTHREAD_EXPLICIT_SCHED) != 0 )
+    errorExit("main->pthread_attr_setinheritsched");
+
+    /* Scheduler */
+    if( pthread_attr_setschedpolicy(&(attr[i]), POLICY2USE) != 0 )
+    errorExit("main->pthread_attr_setschedpolicy");
+
+
+    /* All threads with the same priority value */
+    memset(&(priority[i]), 0, sizeof(struct sched_param));
+    if( (priority[i].sched_priority = sched_get_priority_max(POLICY2USE)) == -1)
+    errorExit("main->sched_get_priority_max");
+
+    printf("Priority of Task %d: %d\n", i+1, priority[i].sched_priority);
+
+    if( pthread_attr_setschedparam(&(attr[i]), &(priority[i])) != 0 )
+    errorExit("main->pthread_attr_setschedparam");
+
+  }
+
+  /* Initialize Semaphore */
+  sem_init(&mutex, 0, 1);
+
+  /* Create threads for all tasks - Filters */
+  // if(pthread_create(&(thread[0]), &(attr[0]), task1, NULL) != 0) // (void *) task3 (void *) &pointCloud void* (*)(task1)
+  //   errorExit("main->pthread_create");
+  // printf("\nThread 1 was created!\n");
+  //
+  // if(pthread_create(&(thread[1]), &(attr[1]), task2, NULL) != 0)
+  //   errorExit("main->pthread_create");
+  // printf("\nThread 2 was created!\n");
+  //
+  // if(pthread_create(&(thread[2]), &(attr[2]), task3, NULL) != 0)
+  //   errorExit("main->pthread_create");
+  // printf("Thread 3 was created!\n");
+  //
+  //
+  /* Waits for the ending of each thread tasks - Filters */
+  if(pthread_join(thread[0], NULL) != 0)
+    errorExit("main->pthread_join");
+  //
+  // if(pthread_join(thread[1],NULL) != 0)
+  //   errorExit("main->pthread_join");
+  //
+  // if(pthread_join(thread[2],NULL) != 0)
+  //   errorExit("main->pthread_join");
+
+  printf("\nWaiting...\n\n");
+
+  /* Final results... for each task */
+  printf("Response times:\n");
+  //response_times();
+
+  /* Cancel tasks threads */
+  for (int i = 0; i < 1; i++) {
+    pthread_cancel(thread[i]);
+  }
+  /* destroy mutex before ending the program */
+  sem_destroy(&mutex);
+  //exit(EXIT_SUCCESS);
 }
